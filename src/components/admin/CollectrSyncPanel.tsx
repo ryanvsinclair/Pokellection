@@ -170,7 +170,9 @@ export function CollectrSyncPanel() {
           {preview.toAdd.length > 0 && (
             <PreviewList
               title="New cards to add"
-              items={preview.toAdd.map((item) => `${item.title} (${item.cardNumber ?? "n/a"})`)}
+              items={preview.toAdd.map(
+                (item) => `${item.title} (${item.cardNumber ?? "n/a"}) · ${item.condition}`,
+              )}
             />
           )}
 
@@ -218,8 +220,8 @@ function PreviewList({ title, items }: { title: string; items: string[] }) {
     <div className="space-y-2">
       <h4 className="text-sm font-semibold">{title}</h4>
       <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-border bg-white p-2 text-sm">
-        {items.slice(0, 30).map((item) => (
-          <li key={item} className="border-b border-slate-100 pb-1 last:border-none">
+        {items.slice(0, 30).map((item, index) => (
+          <li key={`${item}-${index}`} className="border-b border-slate-100 pb-1 last:border-none">
             {item}
           </li>
         ))}

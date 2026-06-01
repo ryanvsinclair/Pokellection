@@ -1,3 +1,4 @@
+import { usdToCad } from "@/lib/currency";
 import { slugify } from "@/lib/utils";
 
 export interface CollectrPortfolioItem {
@@ -102,20 +103,11 @@ export function parseProfileIdFromUrl(profileUrl: string): string {
   return profileId;
 }
 
-function buildCollectrTitle(
-  name: string,
-  subType: string | null,
-  gradeCompany: string | null,
-): string {
-  let title = name;
-  // "Normal" is the default printing; only surface notable variants.
-  if (subType && subType.toLowerCase() !== "normal") {
-    title += ` (${subType})`;
-  }
-  if (gradeCompany) {
-    title += ` [${gradeCompany}]`;
-  }
-  return title;
+function buildCollectrTitle(name: string, gradeCompany: string | null): string {
+  // Printing/sub-type is stored in its own `printing` column, so the title stays
+  // clean ("Gastly", not "Gastly (Reverse Holofoil)"). Grade is kept inline since
+  // there is no dedicated grade column.
+  return gradeCompany ? `${name} [${gradeCompany}]` : name;
 }
 
 function mapRawProduct(row: CollectrRawItem): CollectrPortfolioItem | null {
@@ -128,12 +120,13 @@ function mapRawProduct(row: CollectrRawItem): CollectrPortfolioItem | null {
 
   return {
     productId: row.product_id,
-    title: buildCollectrTitle(row.product_name.trim(), productSubType, gradeCompany),
+    title: buildCollectrTitle(row.product_name.trim(), gradeCompany),
     setName: row.catalog_group?.trim() || null,
     cardNumber: row.card_number?.trim() || null,
     rarity: row.rarity?.trim() || null,
     imageUrl: row.image_url?.trim() || null,
-    marketPriceCad: Number.parseFloat(row.market_price ?? "0") || 0,
+    // Collectr's market_price is USD — convert to CAD on import.
+    marketPriceCad: usdToCad(Number.parseFloat(row.market_price ?? "0")),
     quantity: Number.parseInt(row.quantity ?? "1", 10) || 1,
     condition: mapCondition(row.card_condition),
     productSubType,
@@ -339,10 +332,20 @@ export function parseCollectrIdentityFromTag(tag: string): string | null {
 }
 
 export function collectrSlug(item: CollectrPortfolioItem): string {
+  // The title no longer encodes the printing, so product + condition alone would
+  // collide across printings (e.g. Gastly NM Reverse Holofoil vs NM Normal).
+  // Include printing and grade to keep the slug unique per listing.
+  const variant = [item.productSubType, item.gradeCompany]
+    .map((part) => (part ? slugify(String(part)) : ""))
+    .filter(Boolean)
+    .join("-");
   return [
     slugify(item.title || "collectr-card"),
     "collectr",
     item.productId,
     item.condition.toLowerCase(),
-  ].join("-");
+    variant,
+  ]
+    .filter(Boolean)
+    .join("-");
 }

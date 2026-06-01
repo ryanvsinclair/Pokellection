@@ -1,0 +1,30 @@
+---
+description: Capture non-obvious decisions and constraints so they survive context compaction
+alwaysApply: true
+---
+
+# Capture Durable Knowledge
+
+Conversation history gets summarized away. `ARCHITECTURE.md` is re-loaded every
+session, so it is where hard-won knowledge must live.
+
+## When to write to ARCHITECTURE.md
+
+Before finishing a task, add an entry if you discovered any of:
+
+- A non-obvious constraint or gotcha (e.g. an API that fails server-side, a param
+  that must be omitted, a version pin that matters).
+- A deliberate design choice with trade-offs someone might later "undo" by accident.
+- The reason a workaround exists.
+
+## How
+
+- Add a short entry at the **top** of `ARCHITECTURE.md`: context → decision → why.
+- Keep it tight (a few lines). Don't restate what the code already makes obvious.
+- If it's a hard rule for future changes, also reflect it in the relevant
+  `.cursor/rules/*.mdc` or `AGENTS.md`.
+
+## Why
+
+This converts ephemeral chat insight into persistent, re-injected memory — the
+only way it outlives compaction.

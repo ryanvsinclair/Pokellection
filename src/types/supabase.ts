@@ -24,6 +24,7 @@ export type Database = {
           id: string
           photo_paths: string[]
           price_cad: number
+          printing: string | null
           quantity: number
           rarity: string | null
           set_name: string | null
@@ -42,6 +43,7 @@ export type Database = {
           id?: string
           photo_paths?: string[]
           price_cad: number
+          printing?: string | null
           quantity?: number
           rarity?: string | null
           set_name?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           id?: string
           photo_paths?: string[]
           price_cad?: number
+          printing?: string | null
           quantity?: number
           rarity?: string | null
           set_name?: string | null

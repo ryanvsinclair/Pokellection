@@ -10,6 +10,18 @@ export function formatCad(amount: number): string {
   }).format(amount);
 }
 
+const CONDITION_LABELS: Record<string, string> = {
+  NM: "Near Mint",
+  LP: "Lightly Played",
+  MP: "Moderately Played",
+  HP: "Heavily Played",
+  DMG: "Damaged",
+};
+
+export function formatCondition(condition: string): string {
+  return CONDITION_LABELS[condition] ?? condition;
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

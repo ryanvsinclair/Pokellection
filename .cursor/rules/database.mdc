@@ -1,0 +1,43 @@
+---
+description: Database access rules — typed queries, no invalid table/column references
+globs: src/**/*.ts,src/**/*.tsx
+alwaysApply: false
+---
+
+# Database Access
+
+`src/types/supabase.ts` is the generated source of truth for tables, columns,
+and enums. Never hand-edit it and never reference a column/table from memory —
+let TypeScript verify it.
+
+## Route reads/writes through the query layer
+
+Put database reads in `src/lib/queries/` as typed functions and call those.
+Don't scatter `.from(...)` across pages/components.
+
+```ts
+// ❌ BAD — inline, easy to typo a column, duplicated across files
+const { data } = await supabase.from("cards").select("*").eq("status", "available");
+
+// ✅ GOOD — reuse the typed query
+import { getAvailableCards } from "@/lib/queries/cards";
+const cards = await getAvailableCards(supabase);
+```
+
+## Use named types, not redefined shapes
+
+```ts
+import type { Card, Order } from "@/types/database"; // derived from generated types
+```
+
+## Respect RLS roles
+
+- public: read `cards` where `status='available'`, read `site_settings`.
+- buyer: owns their `cart_items` + `orders`; cannot update `cards`.
+- manager: full access — guard with `assertManager(supabase)` before mutating.
+
+## After schema changes
+
+Add a migration in `supabase/migrations/`, then regenerate `src/types/supabase.ts`.
+If queries start resolving to `never`, suspect a stale generated type or a
+`@supabase/ssr` ↔ `@supabase/supabase-js` version mismatch.

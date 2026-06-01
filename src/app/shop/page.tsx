@@ -1,4 +1,5 @@
 import { CardGrid } from "@/components/CardGrid";
+import { getAvailableCards } from "@/lib/queries/cards";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -7,11 +8,7 @@ export const metadata = {
 
 export default async function ShopPage() {
   const supabase = await createClient();
-  const { data: cards } = await supabase
-    .from("cards")
-    .select("*")
-    .eq("status", "available")
-    .order("created_at", { ascending: false });
+  const cards = await getAvailableCards(supabase);
 
   return (
     <div className="space-y-6">
@@ -21,7 +18,7 @@ export default async function ShopPage() {
           All available singles — pickup in Ottawa or ship anywhere in Canada.
         </p>
       </div>
-      <CardGrid cards={cards ?? []} />
+      <CardGrid cards={cards} />
     </div>
   );
 }

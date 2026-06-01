@@ -1,0 +1,102 @@
+# Architecture & Decisions
+
+The **"why"** behind non-obvious choices. Read this before changing the systems
+below — these decisions were deliberate and often hard-won. When you discover a
+new non-obvious constraint, **add it here** (see `.cursor/rules/decisions.mdc`).
+
+Format: newest decisions on top. Keep entries short — context, decision, why.
+
+---
+
+## Printing/sub-type is a stored field; title stays clean; slug includes printing
+
+**Context:** A catalog product is owned in multiple printings (Holofoil, Reverse
+Holofoil, Normal, 1st Edition, Unlimited…). Previously the printing was baked into
+the card `title` (e.g. "Gastly (Reverse Holofoil)") via `buildCollectrTitle`.
+
+**Decision:** `cards.printing` (nullable `text`, migration `005`) stores the
+printing/sub-type. `buildCollectrTitle` no longer appends the sub-type, so titles
+stay clean ("Gastly"). The import (`mapRawProduct` + apply route) writes
+`item.productSubType` into `printing` on insert **and** update. The shop card shows
+`condition • printing` (just the condition when `printing` is null/empty).
+
+**Why / gotcha:** Once the printing left the title, `product + condition` alone
+collided across printings (Gastly NM Reverse Holofoil vs NM Normal → same slug and
+a unique-constraint violation). `collectrSlug` now appends the slugified printing
+(and grade) so each listing's slug stays unique. Existing 698 rows were backfilled
+from the 3rd `|`-segment of the `collectr:` tag, with the trailing ` (<printing>)`
+stripped from their titles.
+
+---
+
+## Collectr prices are USD — converted to CAD on import
+
+**Context:** Collectr's `market_price` is in **USD**; we sell in CAD.
+
+**Decision:** Convert on import via `usdToCad()` (`src/lib/currency.ts`, rate
+`USD_TO_CAD`). `CollectrPortfolioItem.marketPriceCad` is therefore true CAD.
+Existing rows were converted once with `price_cad = price_cad * 1.38`.
+
+**Why:** Prices were originally imported raw (USD) into the `price_cad` column.
+Re-running the sync re-derives CAD from raw USD × rate (no double-conversion of
+DB values). Update `USD_TO_CAD` when the rate drifts; managers can also edit any
+price after import.
+
+## Collectr sync runs in the browser, not the server
+
+**Context:** Syncing the manager's Collectr showcase (`api-v2.getcollectr.com`).
+
+**Decision:** Pagination/scraping happens **client-side** in the admin's browser
+(`src/lib/collectr-client.ts`). The server (`api/admin/collectr/preview` + `apply`)
+only diffs against the DB and imports — it never fetches Collectr itself.
+
+**Why:**
+- Server-side requests get **HTTP 500 from CloudFront even with a full browser
+  header set** — it's **TLS fingerprinting**, not headers. Can't be fixed from a
+  serverless environment.
+- A real browser request returns 200, and the API sends
+  `Access-Control-Allow-Origin: *`, so the admin's browser can read it cross-origin.
+- **Gotcha:** the API **404s if empty query params are included** (e.g.
+  `searchString=&id=`). `buildShowcaseUrl` must omit empty params.
+- Pagination is `offset`/`limit=30` until a page returns no products.
+
+## Collectr listing identity = product + condition + sub_type + grade
+
+**Context:** The same card can exist as multiple distinct sellable listings.
+
+**Decision:** A listing's identity (and its `collectr:` tag) is
+`productId | condition | productSubType | gradeId | gradeCompany`
+(`collectrIdentity()` in `src/lib/collectr.ts`). Identical copies stack via `quantity`.
+
+**Why:** Keying on `product_id` alone (or even product+condition) **merges genuinely
+different cards** — e.g. the same card NM in *Reverse Holofoil* ($4.94) vs *Normal*
+($0.40). Verified live: product+condition+sub_type yields the correct 698 distinct
+listings (vs 759 total when counting quantities).
+
+## Supabase types are generated; ssr is pinned to match supabase-js
+
+**Context:** Every `.from().select()` was resolving to `never` (~100 type errors).
+
+**Decision:**
+- `src/types/supabase.ts` is **generated** from the live DB (never hand-edited);
+  `src/types/database.ts` derives named aliases from it.
+- `@supabase/ssr` is kept on **0.10.x** to match `@supabase/supabase-js` 2.106.x.
+
+**Why:** ssr **0.6.1** built a client whose generics didn't match newer
+supabase-js (`SupabaseClient` signature changed), collapsing query rows to `never`.
+Upgrading ssr fixed it. **If rows go `never` again, suspect a stale generated type
+or an ssr↔supabase-js version drift.**
+
+## Data access goes through `src/lib/queries/`
+
+**Decision:** Reads live in typed functions in `src/lib/queries/`, not inline in pages.
+
+**Why:** Centralizes table/column references in one type-checked place so agents
+can't typo columns or duplicate query logic across files.
+
+## RLS role model
+
+- **public:** read `cards` where `status='available'`, read `site_settings`.
+- **buyer:** owns their `cart_items` + `orders`; **cannot** mutate `cards`.
+- **manager:** full access; server code guards with `assertManager()` /
+  the `is_manager()` SQL helper.

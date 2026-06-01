@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Card } from "@/types/database";
-import { formatCad, getPhotoUrl } from "@/lib/utils";
+import { AddToCartButton } from "@/components/AddToCartButton";
+import { formatCad, formatCondition, getPhotoUrl } from "@/lib/utils";
 
 interface CardGridProps {
   cards: Card[];
@@ -21,33 +22,57 @@ export function CardGrid({ cards, emptyMessage = "No cards available right now."
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {cards.map((card) => {
         const photo = card.photo_paths[0];
+        const meta = [card.rarity, card.card_number].filter(Boolean).join(" • ");
         return (
-          <Link
+          <div
             key={card.id}
-            href={`/shop/${card.slug}`}
-            className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md"
+            className="flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#161616] text-white shadow-sm transition hover:border-slate-700"
           >
-            <div className="relative aspect-[3/4] bg-slate-100">
-              {photo ? (
-                <Image
-                  src={getPhotoUrl(photo)}
-                  alt={card.title}
-                  fill
-                  className="object-cover transition group-hover:scale-[1.02]"
-                  sizes="(max-width: 640px) 50vw, 25vw"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs text-muted">
-                  No photo
-                </div>
+            <Link href={`/shop/${card.slug}`} className="group block p-3 pb-0">
+              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-slate-900">
+                {photo ? (
+                  <Image
+                    src={getPhotoUrl(photo)}
+                    alt={card.title}
+                    fill
+                    className="object-contain transition group-hover:scale-[1.02]"
+                    sizes="(max-width: 640px) 50vw, 25vw"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-xs text-slate-500">
+                    No photo
+                  </div>
+                )}
+              </div>
+            </Link>
+
+            <div className="flex flex-1 flex-col gap-1 p-3">
+              <Link href={`/shop/${card.slug}`} className="hover:underline">
+                <h3 className="line-clamp-2 text-sm font-bold leading-snug">{card.title}</h3>
+              </Link>
+
+              {card.set_name && (
+                <p className="line-clamp-1 text-xs text-slate-400 underline decoration-slate-600 underline-offset-2">
+                  {card.set_name}
+                </p>
               )}
+
+              {meta && <p className="text-xs text-slate-400">{meta}</p>}
+
+              <p className="text-xs text-amber-400">
+                {formatCondition(card.condition)}
+                {card.printing ? ` • ${card.printing}` : ""}
+              </p>
+
+              <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                <div>
+                  <p className="text-lg font-bold text-red-500">{formatCad(card.price_cad)}</p>
+                  <p className="text-xs text-teal-400">Qty: {card.quantity}</p>
+                </div>
+                <AddToCartButton cardId={card.id} variant="icon" />
+              </div>
             </div>
-            <div className="space-y-1 p-3">
-              <p className="line-clamp-2 text-sm font-medium leading-snug">{card.title}</p>
-              <p className="text-sm font-bold text-red-600">{formatCad(card.price_cad)}</p>
-              <p className="text-xs text-muted">{card.condition}</p>
-            </div>
-          </Link>
+          </div>
         );
       })}
     </div>

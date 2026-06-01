@@ -1,0 +1,31 @@
+---
+description: Supabase migration conventions for Pokellection
+globs: supabase/**/*.sql
+alwaysApply: false
+---
+
+# Supabase Migrations
+
+`supabase/migrations/` is the schema source of truth.
+
+## Rules
+
+- Add a **new** numbered file (`NNN_short_description.sql`); never rewrite history
+  in already-applied migrations.
+- Write idempotent SQL where practical (`create ... if not exists`,
+  `drop policy if exists` before `create policy`).
+- Every table that holds user data has **RLS enabled** with explicit policies for
+  the relevant roles (public / buyer / manager). New tables must follow suit.
+- Keep enums in sync with `src/types/database.ts` aliases.
+
+## After writing a migration
+
+1. Apply it to the project.
+2. **Regenerate `src/types/supabase.ts`** so the generated types match.
+3. Run `npx tsc --noEmit` — new/changed columns should now type-check end to end.
+
+## Role model (keep consistent)
+
+- public: read available `cards`, read `site_settings`.
+- buyer: CRUD own `cart_items`; read own `orders`.
+- manager: full access via the `is_manager()` helper / `assertManager()`.

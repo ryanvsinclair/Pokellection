@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getOrdersForBuyer } from "@/lib/queries/orders";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad } from "@/lib/utils";
 
@@ -10,11 +11,7 @@ export default async function OrdersPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/account/login?redirect=/account/orders");
 
-  const { data: orders } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("buyer_id", user.id)
-    .order("created_at", { ascending: false });
+  const orders = await getOrdersForBuyer(supabase, user.id);
 
   return (
     <div className="space-y-4">

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { getAvailableCardBySlug } from "@/lib/queries/cards";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad, getPhotoUrl } from "@/lib/utils";
 
@@ -24,12 +25,7 @@ export async function generateMetadata({ params }: Props) {
 export default async function CardDetailPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data: card } = await supabase
-    .from("cards")
-    .select("*")
-    .eq("slug", slug)
-    .eq("status", "available")
-    .single();
+  const card = await getAvailableCardBySlug(supabase, slug);
 
   if (!card) notFound();
 

@@ -1,0 +1,35 @@
+---
+description: Core project conventions for Pokellection — avoid duplication and keep structure consistent
+alwaysApply: true
+---
+
+# Pokellection Conventions
+
+Read `AGENTS.md` for the map. These are the non-negotiables.
+
+## Avoid duplication
+
+- Before adding a function, component, or util, search `src/lib`, `src/lib/queries`,
+  and `src/components` for an existing one. Extend it; do not recreate it.
+- Shared constants/formatters live in `src/lib/utils.ts` (e.g. `formatCad`, `slugify`, `getPhotoUrl`).
+- Reusable UI goes in `src/components/`; manager-only UI in `src/components/admin/`.
+
+## Server vs client work
+
+- Mutations from forms → **server actions** (`"use server"`, e.g. `src/app/**/actions.ts`).
+- External/long-running or admin operations → **route handlers** under `src/app/api/`.
+- Manager-only server actions and routes must call `assertManager(supabase)` first.
+
+## Supabase clients (never construct inline)
+
+```ts
+// Server components / actions / routes:
+import { createClient } from "@/lib/supabase/server";
+// Browser components ("use client"):
+import { createClient } from "@/lib/supabase/client";
+```
+
+## Definition of done
+
+`npx tsc --noEmit` clean → `npm run build` passes → no duplicated helpers →
+regenerate `src/types/supabase.ts` if the schema changed.
