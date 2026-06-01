@@ -134,11 +134,11 @@ export function CollectrSyncPanel() {
         {loadingPreview ? "Checking portfolio..." : "Preview sync changes"}
       </button>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {success && <p className="text-sm text-emerald-700">{success}</p>}
+      {error && <p className="text-sm text-primary">{error}</p>}
+      {success && <p className="text-sm text-emerald-700 dark:text-emerald-400">{success}</p>}
 
       {preview && summary && (
-        <div className="space-y-4 rounded-lg bg-slate-50 p-4">
+        <div className="space-y-4 rounded-lg bg-surface p-4">
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryPill
               label="Scraped listings"
@@ -156,7 +156,7 @@ export function CollectrSyncPanel() {
           </div>
 
           {preview.warning && (
-            <p className="text-sm text-amber-700">{preview.warning}</p>
+            <p className="text-sm text-amber-700 dark:text-amber-400">{preview.warning}</p>
           )}
           {preview.source === "api" && preview.totalCards != null && (
             <p className="text-sm text-muted">
@@ -187,7 +187,7 @@ export function CollectrSyncPanel() {
             type="button"
             onClick={applyPreview}
             disabled={applying}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
           >
             {applying ? "Applying..." : "Confirm and apply sync"}
           </button>
@@ -207,7 +207,7 @@ function SummaryPill({
   detail?: string;
 }) {
   return (
-    <div className="rounded-md border border-border bg-white px-3 py-2 text-sm">
+    <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
       <p className="text-xs text-muted">{label}</p>
       <p className="text-lg font-semibold">{value}</p>
       {detail && <p className="text-xs text-muted">{detail}</p>}
@@ -219,9 +219,9 @@ function PreviewList({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="space-y-2">
       <h4 className="text-sm font-semibold">{title}</h4>
-      <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-border bg-white p-2 text-sm">
+      <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-border bg-card p-2 text-sm">
         {items.slice(0, 30).map((item, index) => (
-          <li key={`${item}-${index}`} className="border-b border-slate-100 pb-1 last:border-none">
+          <li key={`${item}-${index}`} className="border-b border-border pb-1 last:border-none">
             {item}
           </li>
         ))}

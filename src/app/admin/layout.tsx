@@ -26,7 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link
             key={item.href}
             href={item.href}
-            className="whitespace-nowrap rounded-full border border-border px-3 py-1.5 font-medium hover:bg-slate-50"
+            className="whitespace-nowrap rounded-full border border-border px-3 py-1.5 font-medium hover:bg-surface"
           >
             {item.label}
           </Link>

@@ -26,7 +26,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#dc2626",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -38,7 +41,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-CA">
+    <html lang="en-CA" suppressHydrationWarning>
+      <head>
+        <script
+          // Set the theme before paint to avoid a flash of the wrong theme.
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${geistSans.variable} min-h-dvh antialiased`}>
         <Header />
         <main className="mx-auto min-h-[calc(100dvh-8rem)] w-full max-w-6xl px-4 pb-24 pt-6 md:pb-8">

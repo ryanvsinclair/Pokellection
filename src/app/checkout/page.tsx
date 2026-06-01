@@ -54,7 +54,7 @@ export default async function CheckoutPage({
       </div>
 
       {error === "unavailable" && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
           Some items in your cart are no longer available. Remove them to continue.
         </p>
       )}
@@ -62,7 +62,7 @@ export default async function CheckoutPage({
       {lines.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center">
           <p className="text-sm text-muted">Your cart is empty.</p>
-          <Link href="/shop" className="mt-3 inline-block text-sm font-semibold text-red-600">
+          <Link href="/shop" className="mt-3 inline-block text-sm font-semibold text-primary">
             Browse cards
           </Link>
         </div>
@@ -96,7 +96,7 @@ export default async function CheckoutPage({
                   </form>
                   <form action={removeFromCart}>
                     <input type="hidden" name="cart_item_id" value={row.id} />
-                    <button type="submit" className="text-xs font-medium text-red-600">
+                    <button type="submit" className="text-xs font-medium text-primary">
                       Remove
                     </button>
                   </form>
@@ -169,7 +169,7 @@ export default async function CheckoutPage({
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-red-600 py-3 text-sm font-semibold text-white"
+              className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-white"
             >
               Place order (e-transfer)
             </button>

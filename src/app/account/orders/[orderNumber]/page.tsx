@@ -60,30 +60,30 @@ export default async function OrderDetailPage({ params }: Props) {
       </div>
 
       {order.payment_status === "awaiting_transfer" && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
-          <p className="font-semibold text-amber-900">E-transfer instructions</p>
-          <p className="mt-2 text-amber-800">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/60 dark:bg-amber-950/40">
+          <p className="font-semibold text-amber-900 dark:text-amber-200">E-transfer instructions</p>
+          <p className="mt-2 text-amber-800 dark:text-amber-300">
             Send {formatCad(order.total_cad)} to{" "}
             <strong>{settings?.etransfer_email || "see email confirmation"}</strong>
           </p>
-          <p className="mt-1 text-amber-800">
+          <p className="mt-1 text-amber-800 dark:text-amber-300">
             Memo: <strong>{order.order_number}</strong>
           </p>
           {settings?.etransfer_instructions && (
-            <p className="mt-2 text-amber-800">{settings.etransfer_instructions}</p>
+            <p className="mt-2 text-amber-800 dark:text-amber-300">{settings.etransfer_instructions}</p>
           )}
         </div>
       )}
 
       {order.tracking_number ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-          <p className="font-semibold text-emerald-900">Shipping tracking</p>
-          <p className="mt-1 font-mono text-emerald-800">{order.tracking_number}</p>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/40">
+          <p className="font-semibold text-emerald-900 dark:text-emerald-200">Shipping tracking</p>
+          <p className="mt-1 font-mono text-emerald-800 dark:text-emerald-300">{order.tracking_number}</p>
           <a
             href={getTrackingUrl(order.tracking_number)}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-block font-medium text-emerald-700 underline"
+            className="mt-2 inline-block font-medium text-emerald-700 underline dark:text-emerald-400"
           >
             Track package on Canada Post
           </a>

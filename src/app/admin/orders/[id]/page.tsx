@@ -32,7 +32,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
 
       <ul className="rounded-xl border border-border bg-card p-4 text-sm">
         {(items ?? []).map((item) => (
-          <li key={item.id} className="border-b border-slate-100 py-2 last:border-none">
+          <li key={item.id} className="border-b border-border py-2 last:border-none">
             {item.title_snapshot} × {item.quantity} — {formatCad(item.price_snapshot)}
           </li>
         ))}
@@ -82,7 +82,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           </select>
         </label>
 
-        <button type="submit" className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white">
+        <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
           Save order updates
         </button>
       </form>

@@ -12,7 +12,7 @@ export default async function AdminOrdersPage() {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="min-w-full text-sm">
-        <thead className="bg-slate-50 text-left text-muted">
+        <thead className="bg-surface text-left text-muted">
           <tr>
             <th className="px-4 py-3 font-medium">Order</th>
             <th className="px-4 py-3 font-medium">Buyer</th>
@@ -33,7 +33,7 @@ export default async function AdminOrdersPage() {
                 {order.tracking_number ?? "—"}
               </td>
               <td className="px-4 py-3">
-                <Link href={`/admin/orders/${order.id}`} className="text-sm font-medium text-red-600">
+                <Link href={`/admin/orders/${order.id}`} className="text-sm font-medium text-primary">
                   Manage
                 </Link>
               </td>

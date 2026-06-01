@@ -33,7 +33,7 @@ export default async function CardDetailPage({ params }: Props) {
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
-      <div className="aspect-[3/4] overflow-hidden rounded-xl border border-border bg-slate-100">
+      <div className="aspect-[3/4] overflow-hidden rounded-xl border border-border bg-surface-strong">
         {photo ? (
           <Image
             src={getPhotoUrl(photo)}
@@ -57,16 +57,16 @@ export default async function CardDetailPage({ params }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-2 text-sm">
-          <span className="rounded-full bg-slate-100 px-3 py-1">{card.condition}</span>
+          <span className="rounded-full bg-surface-strong px-3 py-1">{card.condition}</span>
           {card.rarity && (
-            <span className="rounded-full bg-slate-100 px-3 py-1">{card.rarity}</span>
+            <span className="rounded-full bg-surface-strong px-3 py-1">{card.rarity}</span>
           )}
           {card.card_number && (
-            <span className="rounded-full bg-slate-100 px-3 py-1">{card.card_number}</span>
+            <span className="rounded-full bg-surface-strong px-3 py-1">{card.card_number}</span>
           )}
         </div>
 
-        <p className="text-3xl font-bold text-red-600">{formatCad(card.price_cad)}</p>
+        <p className="text-3xl font-bold text-primary">{formatCad(card.price_cad)}</p>
 
         {card.description && (
           <p className="text-sm leading-relaxed text-muted">{card.description}</p>
@@ -75,14 +75,14 @@ export default async function CardDetailPage({ params }: Props) {
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href={`/reserve/${card.id}`}
-            className="rounded-lg bg-red-600 px-5 py-3 text-center text-sm font-semibold text-white"
+            className="rounded-lg bg-primary px-5 py-3 text-center text-sm font-semibold text-white"
           >
             Reserve for pickup
           </Link>
           <AddToCartButton cardId={card.id} />
           <Link
             href="/checkout"
-            className="rounded-lg bg-slate-900 px-5 py-3 text-center text-sm font-semibold text-white"
+            className="rounded-lg bg-foreground px-5 py-3 text-center text-sm font-semibold text-background"
           >
             Go to checkout
           </Link>

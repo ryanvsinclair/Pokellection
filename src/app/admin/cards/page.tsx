@@ -15,7 +15,7 @@ export default async function AdminCardsPage() {
       <div className="flex justify-end">
         <Link
           href="/admin/cards/new"
-          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
         >
           Add card
         </Link>
@@ -23,7 +23,7 @@ export default async function AdminCardsPage() {
 
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-muted">
+          <thead className="bg-surface text-left text-muted">
             <tr>
               <th className="px-4 py-3 font-medium">Title</th>
               <th className="px-4 py-3 font-medium">Price</th>
@@ -53,7 +53,7 @@ export default async function AdminCardsPage() {
                         <input type="hidden" name="status" value="sold" />
                         <button
                           type="submit"
-                          className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800"
+                          className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
                         >
                           Mark sold
                         </button>
@@ -75,7 +75,7 @@ export default async function AdminCardsPage() {
                       <input type="hidden" name="card_id" value={card.id} />
                       <button
                         type="submit"
-                        className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700"
+                        className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
                       >
                         Delete
                       </button>

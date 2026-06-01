@@ -8,6 +8,24 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Theming: class-based dark mode via CSS variables
+
+**Context:** Needed a light/dark toggle. The palette was already CSS variables in
+`globals.css` (`--background`, `--card`, `--border`, `--muted`, `--primary`,
+`--accent`) surfaced through `@theme inline` as `bg-card`, `text-muted`, etc.
+
+**Decision:** Dark mode is **class-based**, not `prefers-color-scheme`. `globals.css`
+declares `@custom-variant dark (&:where(.dark, .dark *))` and a `.dark { … }` block
+that overrides the same variables. Added `--surface` / `--surface-strong` tokens to
+replace ad-hoc `bg-slate-50/100`. Brand red is the `--primary` token (`bg-primary`,
+`text-primary`), not raw `red-600`. `ThemeToggle` flips `.dark` on `<html>` and
+persists to `localStorage.theme`; an inline script in the root layout `<head>` sets
+the class **before paint** (so `<html>` has `suppressHydrationWarning`). Shop card
+tiles in `CardGrid` use the same tokens (`bg-card`, `text-foreground`, `text-muted`,
+`text-primary`); accent colors (amber/teal) use `dark:` variants for contrast.
+
+---
+
 ## Printing/sub-type is a stored field; title stays clean; slug includes printing
 
 **Context:** A catalog product is owned in multiple printings (Holofoil, Reverse

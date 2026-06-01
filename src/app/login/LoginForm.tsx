@@ -78,12 +78,12 @@ export function LoginForm() {
           />
         </label>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-primary">{error}</p>}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-red-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white disabled:opacity-60"
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>

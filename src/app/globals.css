@@ -1,14 +1,36 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: toggled by adding `.dark` to <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  color-scheme: light;
   --background: #f8fafc;
   --foreground: #0f172a;
   --primary: #dc2626;
   --primary-dark: #b91c1c;
+  --primary-foreground: #ffffff;
   --accent: #facc15;
   --muted: #64748b;
   --card: #ffffff;
+  --surface: #f8fafc;
+  --surface-strong: #f1f5f9;
   --border: #e2e8f0;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b0b0c;
+  --foreground: #f1f5f9;
+  --primary: #ef4444;
+  --primary-dark: #dc2626;
+  --primary-foreground: #ffffff;
+  --accent: #facc15;
+  --muted: #94a3b8;
+  --card: #161616;
+  --surface: #1c1c1f;
+  --surface-strong: #26262a;
+  --border: #2a2a2e;
 }
 
 @theme inline {
@@ -16,9 +38,12 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-dark: var(--primary-dark);
+  --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
   --color-muted: var(--muted);
   --color-card: var(--card);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
   --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
 }

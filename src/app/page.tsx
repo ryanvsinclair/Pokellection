@@ -43,7 +43,7 @@ export default async function HomePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Latest arrivals</h2>
-          <Link href="/shop" className="text-sm font-medium text-red-600">
+          <Link href="/shop" className="text-sm font-medium text-primary">
             View all
           </Link>
         </div>

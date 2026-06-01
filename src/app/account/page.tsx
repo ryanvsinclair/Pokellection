@@ -32,14 +32,14 @@ export default async function AccountPage() {
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
           href="/checkout"
-          className="rounded-xl border border-border bg-card p-4 hover:bg-slate-50"
+          className="rounded-xl border border-border bg-card p-4 hover:bg-surface"
         >
           <p className="font-semibold">Cart</p>
           <p className="text-sm text-muted">View cart & checkout</p>
         </Link>
         <Link
           href="/account/orders"
-          className="rounded-xl border border-border bg-card p-4 hover:bg-slate-50"
+          className="rounded-xl border border-border bg-card p-4 hover:bg-surface"
         >
           <p className="font-semibold">Orders</p>
           <p className="text-sm text-muted">{count ?? 0} past orders</p>

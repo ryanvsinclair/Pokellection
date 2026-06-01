@@ -25,7 +25,7 @@ export default async function OrdersPage() {
           <li key={order.id}>
             <Link
               href={`/account/orders/${order.order_number}`}
-              className="block rounded-xl border border-border bg-card p-4 hover:bg-slate-50"
+              className="block rounded-xl border border-border bg-card p-4 hover:bg-surface"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-semibold">{order.order_number}</p>
@@ -35,7 +35,7 @@ export default async function OrdersPage() {
                 {order.payment_status.replace("_", " ")} · {order.fulfillment_status.replace("_", " ")}
               </p>
               {order.tracking_number && (
-                <p className="mt-1 text-xs text-emerald-700">Tracking added</p>
+                <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">Tracking added</p>
               )}
             </Link>
           </li>

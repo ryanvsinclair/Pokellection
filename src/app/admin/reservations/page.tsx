@@ -10,7 +10,7 @@ export default async function AdminReservationsPage() {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="min-w-full text-sm">
-        <thead className="bg-slate-50 text-left text-muted">
+        <thead className="bg-surface text-left text-muted">
           <tr>
             <th className="px-4 py-3 font-medium">Buyer</th>
             <th className="px-4 py-3 font-medium">Status</th>

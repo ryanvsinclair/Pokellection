@@ -14,7 +14,7 @@ export function AddToCartButton({ cardId, variant = "default" }: Props) {
           type="submit"
           aria-label="Add to cart"
           title="Add to cart"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-teal-400 text-teal-400 transition hover:bg-teal-400 hover:text-slate-900"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-teal-600 text-teal-600 transition hover:bg-teal-600 hover:text-white dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-400 dark:hover:text-slate-900"
         >
           <svg
             width="18"

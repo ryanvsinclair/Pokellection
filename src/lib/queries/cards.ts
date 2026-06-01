@@ -3,13 +3,14 @@ import type { Card, Database } from "@/types/database";
 
 type Client = SupabaseClient<Database>;
 
-/** All cards currently for sale, newest first. */
+/** All cards currently for sale, highest price first. */
 export async function getAvailableCards(supabase: Client): Promise<Card[]> {
   const { data } = await supabase
     .from("cards")
     .select("*")
     .eq("status", "available")
-    .order("created_at", { ascending: false });
+    .order("price_cad", { ascending: false })
+    .order("title", { ascending: true });
   return data ?? [];
 }
 

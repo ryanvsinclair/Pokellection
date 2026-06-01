@@ -1,4 +1,4 @@
-import { CardGrid } from "@/components/CardGrid";
+import { ShopBrowser } from "@/components/ShopBrowser";
 import { getAvailableCards } from "@/lib/queries/cards";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,7 +18,7 @@ export default async function ShopPage() {
           All available singles — pickup in Ottawa or ship anywhere in Canada.
         </p>
       </div>
-      <CardGrid cards={cards} />
+      <ShopBrowser cards={cards} />
     </div>
   );
 }

@@ -127,12 +127,12 @@ export function CardForm() {
         <textarea name="description" rows={3} className="w-full rounded-lg border border-border px-3 py-2" />
       </label>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-primary">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+        className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
       >
         {loading ? "Saving…" : "Publish card"}
       </button>

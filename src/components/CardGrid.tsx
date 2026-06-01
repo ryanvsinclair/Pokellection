@@ -26,10 +26,10 @@ export function CardGrid({ cards, emptyMessage = "No cards available right now."
         return (
           <div
             key={card.id}
-            className="flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#161616] text-white shadow-sm transition hover:border-slate-700"
+            className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-sm transition hover:shadow-md"
           >
             <Link href={`/shop/${card.slug}`} className="group block p-3 pb-0">
-              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-slate-900">
+              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-surface-strong">
                 {photo ? (
                   <Image
                     src={getPhotoUrl(photo)}
@@ -39,7 +39,7 @@ export function CardGrid({ cards, emptyMessage = "No cards available right now."
                     sizes="(max-width: 640px) 50vw, 25vw"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-slate-500">
+                  <div className="flex h-full items-center justify-center text-xs text-muted">
                     No photo
                   </div>
                 )}
@@ -52,22 +52,22 @@ export function CardGrid({ cards, emptyMessage = "No cards available right now."
               </Link>
 
               {card.set_name && (
-                <p className="line-clamp-1 text-xs text-slate-400 underline decoration-slate-600 underline-offset-2">
+                <p className="line-clamp-1 text-xs text-muted underline decoration-border underline-offset-2">
                   {card.set_name}
                 </p>
               )}
 
-              {meta && <p className="text-xs text-slate-400">{meta}</p>}
+              {meta && <p className="text-xs text-muted">{meta}</p>}
 
-              <p className="text-xs text-amber-400">
+              <p className="text-xs text-amber-600 dark:text-amber-400">
                 {formatCondition(card.condition)}
                 {card.printing ? ` • ${card.printing}` : ""}
               </p>
 
               <div className="mt-auto flex items-end justify-between gap-2 pt-2">
                 <div>
-                  <p className="text-lg font-bold text-red-500">{formatCad(card.price_cad)}</p>
-                  <p className="text-xs text-teal-400">Qty: {card.quantity}</p>
+                  <p className="text-lg font-bold text-primary">{formatCad(card.price_cad)}</p>
+                  <p className="text-xs text-teal-600 dark:text-teal-400">Qty: {card.quantity}</p>
                 </div>
                 <AddToCartButton cardId={card.id} variant="icon" />
               </div>

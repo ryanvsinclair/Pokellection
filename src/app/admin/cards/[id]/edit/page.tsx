@@ -123,7 +123,7 @@ export default async function EditCardPage({ params }: Props) {
 
         <button
           type="submit"
-          className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white"
+          className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white"
         >
           Save changes
         </button>
