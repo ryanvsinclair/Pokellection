@@ -1,0 +1,16 @@
+{
+  "name": "Pokellection",
+  "short_name": "Pokellection",
+  "description": "Pokemon cards for sale in Ottawa — local pickup or shipped via e-transfer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
