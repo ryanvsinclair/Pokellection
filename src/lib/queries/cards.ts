@@ -1,16 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logSupabaseFetchError } from "@/lib/supabase/env";
 import type { Card, Database } from "@/types/database";
 
 type Client = SupabaseClient<Database>;
 
 /** All cards currently for sale, highest price first. */
 export async function getAvailableCards(supabase: Client): Promise<Card[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("cards")
     .select("*")
     .eq("status", "available")
     .order("price_cad", { ascending: false })
     .order("title", { ascending: true });
+
+  if (error) {
+    logSupabaseFetchError("getAvailableCards", error);
+    return [];
+  }
   return data ?? [];
 }
 

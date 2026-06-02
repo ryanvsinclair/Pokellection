@@ -1,15 +1,20 @@
 import Link from "next/link";
 import { CardGrid } from "@/components/CardGrid";
 import { createClient } from "@/lib/supabase/server";
+import { logSupabaseFetchError } from "@/lib/supabase/env";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data: cards } = await supabase
+  const { data: cards, error } = await supabase
     .from("cards")
     .select("*")
     .eq("status", "available")
     .order("created_at", { ascending: false })
     .limit(8);
+
+  if (error) {
+    logSupabaseFetchError("HomePage cards", error);
+  }
 
   return (
     <div className="space-y-10">

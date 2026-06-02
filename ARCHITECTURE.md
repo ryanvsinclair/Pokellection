@@ -26,6 +26,18 @@ to refresh the JWT.
 `NextResponse.next({ request })` in `setAll`, forward cookies on redirects.
 If auth refresh fails (`getUser` error), return the pass-through response instead of throwing.
 
+**Shop shows zero cards but admin has inventory:** Public pages only load
+`status = 'available'` (RLS matches). If the Supabase client env is wrong or the query
+errors, `getAvailableCards` returns `[]` — check server logs for `[getAvailableCards]`.
+Restart `next dev` after editing `.env.local`. On Vercel, set `NEXT_PUBLIC_SUPABASE_*`
+for Production/Preview; a broken deploy (middleware 500) prevents any page from loading.
+
+**Dev `TypeError: fetch failed` (empty `code`):** Network/DNS — not RLS. Usually
+(1) `.env.local` not saved or dev server not restarted, (2) placeholder URL still on disk,
+(3) macOS IPv6 DNS — `npm run dev` sets `NODE_OPTIONS=--dns-result-order=ipv4first`.
+`getSupabaseEnv()` in `src/lib/supabase/env.ts` throws early on bad URLs; logs include
+`error.cause` (e.g. `ENOTFOUND your-project-ref.supabase.co`).
+
 **Vercel log `ReferenceError: __dirname is not defined`:** Usually Edge middleware +
 `next/server` (ua-parser) when Vercel **Framework Preset** is not **Next.js**, or
 Edge lacks the polyfill. Fix: Project Settings → Framework = **Next.js**; in
