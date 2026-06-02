@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+export const runtime = "nodejs";
+
 type UserRole = "manager" | "buyer";
 
 function isManager(role: UserRole | null): boolean {
@@ -113,9 +115,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Edge on Vercel can throw `ReferenceError: __dirname is not defined` via
-  // next/server → ua-parser-js when the project isn't built as Next.js.
-  runtime: "nodejs",
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
