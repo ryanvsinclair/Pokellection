@@ -8,6 +8,17 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Middleware must live in `src/middleware.ts` only (Edge bundle)
+
+**Context:** Vercel deploy failed: Edge middleware referenced unsupported module
+`src/lib/supabase/middleware.ts` (pulled in `@/types/database` / generated Supabase types).
+
+**Decision:** All middleware logic lives in **`src/middleware.ts`** — only `@supabase/ssr`
+and `next/server`. No `Database` generic, no imports from `auth-roles` or `types/`.
+Role helpers are inlined. `auth-roles.ts` remains for server actions/pages.
+
+---
+
 ## Shop price rounding (`roundPriceCad`)
 
 **Context:** Raw Collectr/market prices often land on odd cents (e.g. $0.04, $1.43).
