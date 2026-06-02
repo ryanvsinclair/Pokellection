@@ -12,10 +12,14 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 **Context:** Vercel deploy failed: Edge middleware referenced unsupported module
 `src/lib/supabase/middleware.ts` (pulled in `@/types/database` / generated Supabase types).
+Middleware also 500'd when querying `profiles` from Edge (RLS/network).
 
 **Decision:** All middleware logic lives in **`src/middleware.ts`** — only `@supabase/ssr`
-and `next/server`. No `Database` generic, no imports from `auth-roles` or `types/`.
-Role helpers are inlined. `auth-roles.ts` remains for server actions/pages.
+and `next/server`. Role for route guards comes from **`user.app_metadata.role`** (JWT),
+not a DB read. Migration `007_role_in_jwt.sql` syncs `profiles.role` → `auth.users`
+`raw_app_meta_data` via triggers; backfill on apply. Server actions still use
+`getUserProfileRole()` from DB. After role changes, users may need to sign out/in
+to refresh the JWT.
 
 ---
 
