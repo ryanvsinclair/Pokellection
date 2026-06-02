@@ -21,6 +21,11 @@ not a DB read. Migration `007_role_in_jwt.sql` syncs `profiles.role` → `auth.u
 `getUserProfileRole()` from DB. After role changes, users may need to sign out/in
 to refresh the JWT.
 
+**Vercel `MIDDLEWARE_INVOCATION_FAILED`:** Do **not** call `request.cookies.set` in
+`setAll` — Edge middleware may only set cookies on the **response**. Recreate
+`NextResponse.next({ request })` in `setAll`, forward cookies on redirects.
+If auth refresh fails (`getUser` error), return the pass-through response instead of throwing.
+
 ---
 
 ## Shop price rounding (`roundPriceCad`)
