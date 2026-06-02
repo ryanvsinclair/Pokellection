@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { getUserProfileRole, isManager } from "@/lib/auth-roles";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -31,20 +32,26 @@ export function LoginForm() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
-      .single();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (profile?.role !== "manager") {
+    if (!user) {
+      setError("Sign-in failed. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    const role = await getUserProfileRole(supabase, user.id);
+
+    if (!isManager(role)) {
       setError("This login is for store managers only. Use Account sign in for shopping.");
       await supabase.auth.signOut();
       setLoading(false);
       return;
     }
 
-    router.push(redirect);
+    router.push(redirect.startsWith("/admin") ? redirect : "/admin");
     router.refresh();
   }
 

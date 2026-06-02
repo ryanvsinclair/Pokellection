@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { MobileNav } from "@/components/MobileNav";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/utils";
 import "./globals.css";
 
@@ -52,11 +51,10 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} min-h-dvh antialiased`}>
         <Header />
-        <main className="mx-auto min-h-[calc(100dvh-8rem)] w-full max-w-6xl px-4 pb-24 pt-6 md:pb-8">
+        <main className="mx-auto min-h-[calc(100dvh-8rem)] w-full max-w-6xl px-4 py-6">
           {children}
         </main>
         <Footer />
-        <MobileNav />
       </body>
     </html>
   );

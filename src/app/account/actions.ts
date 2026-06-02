@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getUserProfileRole, isBuyer } from "@/lib/auth-roles";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signUpBuyer(formData: FormData) {
@@ -42,14 +43,19 @@ export async function signInBuyer(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user?.id ?? "")
-    .single();
+  if (!user) {
+    redirect(`/account/login?error=${encodeURIComponent("Sign-in failed. Please try again.")}`);
+  }
 
-  if (profile?.role === "manager") {
-    redirect("/admin");
+  const role = await getUserProfileRole(supabase, user.id);
+
+  if (!isBuyer(role)) {
+    await supabase.auth.signOut();
+    redirect(
+      `/account/login?error=${encodeURIComponent(
+        "This sign-in is for shoppers only. Managers must use the manager login page.",
+      )}&redirect=${encodeURIComponent(redirectTo)}`,
+    );
   }
 
   redirect(redirectTo);

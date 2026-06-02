@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { roundPriceCad } from "@/lib/currency";
 
 function slugify(text: string): string {
   return text
@@ -42,7 +43,7 @@ export function CsvImportForm() {
       card_number: row.card_number || null,
       rarity: row.rarity || null,
       condition: (row.condition || "NM") as "NM" | "LP" | "MP" | "HP" | "DMG",
-      price_cad: Number(row.price_cad),
+      price_cad: roundPriceCad(Number(row.price_cad)),
       quantity: Number(row.quantity || 1),
       status: "available" as const,
       description: row.description || null,

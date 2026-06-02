@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { roundPriceCad } from "@/lib/currency";
 
 function slugify(text: string): string {
   return text
@@ -49,7 +50,7 @@ export function CardForm() {
       card_number: String(form.get("card_number") || "") || null,
       rarity: String(form.get("rarity") || "") || null,
       condition: String(form.get("condition")) as "NM" | "LP" | "MP" | "HP" | "DMG",
-      price_cad: Number(form.get("price_cad")),
+      price_cad: roundPriceCad(Number(form.get("price_cad"))),
       quantity: Number(form.get("quantity") || 1),
       status: "available",
       description: String(form.get("description") || "") || null,

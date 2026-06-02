@@ -1,4 +1,4 @@
-import { usdToCad } from "@/lib/currency";
+import { importPriceCad } from "@/lib/currency";
 import { slugify } from "@/lib/utils";
 
 export interface CollectrPortfolioItem {
@@ -126,7 +126,7 @@ function mapRawProduct(row: CollectrRawItem): CollectrPortfolioItem | null {
     rarity: row.rarity?.trim() || null,
     imageUrl: row.image_url?.trim() || null,
     // Collectr's market_price is USD — convert to CAD on import.
-    marketPriceCad: usdToCad(Number.parseFloat(row.market_price ?? "0")),
+    marketPriceCad: importPriceCad(Number.parseFloat(row.market_price ?? "0")),
     quantity: Number.parseInt(row.quantity ?? "1", 10) || 1,
     condition: mapCondition(row.card_condition),
     productSubType,

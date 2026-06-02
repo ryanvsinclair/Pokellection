@@ -27,11 +27,10 @@ const SORT_OPTIONS: { value: ShopSort; label: string }[] = [
   { value: "oldest", label: "Oldest" },
 ];
 
-function pillClass(active: boolean) {
-  return active
-    ? "border-primary bg-primary text-primary-foreground"
-    : "border-border bg-card text-foreground hover:bg-surface";
-}
+const selectClassName =
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/30 focus:ring-2";
+
+const labelClassName = "text-xs font-semibold uppercase tracking-wide text-muted";
 
 export function ShopBrowser({ cards }: Props) {
   const [filters, setFilters] = useState<ShopFilters>(DEFAULT_SHOP_FILTERS);
@@ -71,52 +70,48 @@ export function ShopBrowser({ cards }: Props) {
           />
         </label>
 
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Sort</p>
-          <div className="flex flex-wrap gap-2">
-            {SORT_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setSort(option.value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${pillClass(sort === option.value)}`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Condition</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => updateFilters({ condition: "all" })}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${pillClass(filters.condition === "all")}`}
-            >
-              All
-            </button>
-            {CARD_CONDITIONS.map((condition) => (
-              <button
-                key={condition}
-                type="button"
-                onClick={() => updateFilters({ condition })}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${pillClass(filters.condition === condition)}`}
-              >
-                {formatCondition(condition)}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted">Set</span>
+            <span className={labelClassName}>Sort</span>
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value as ShopSort)}
+              className={selectClassName}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className={labelClassName}>Condition</span>
+            <select
+              value={filters.condition}
+              onChange={(event) =>
+                updateFilters({
+                  condition: event.target.value as ShopFilters["condition"],
+                })
+              }
+              className={selectClassName}
+            >
+              <option value="all">All conditions</option>
+              {CARD_CONDITIONS.map((condition) => (
+                <option key={condition} value={condition}>
+                  {formatCondition(condition)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className={labelClassName}>Set</span>
             <select
               value={filters.setName}
               onChange={(event) => updateFilters({ setName: event.target.value })}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/30 focus:ring-2"
+              className={selectClassName}
             >
               <option value="">All sets</option>
               {sets.map((setName) => (
@@ -128,13 +123,11 @@ export function ShopBrowser({ cards }: Props) {
           </label>
 
           <label className="block space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Printing
-            </span>
+            <span className={labelClassName}>Printing</span>
             <select
               value={filters.printing}
               onChange={(event) => updateFilters({ printing: event.target.value })}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/30 focus:ring-2"
+              className={selectClassName}
             >
               <option value="">All printings</option>
               {printings.map((printing) => (

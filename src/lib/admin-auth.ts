@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getUserProfileRole, isManager } from "@/lib/auth-roles";
 import type { Database } from "@/types/database";
 
 export async function assertManager(supabase: SupabaseClient<Database>) {
@@ -10,13 +11,9 @@ export async function assertManager(supabase: SupabaseClient<Database>) {
     throw new Error("Unauthorized");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const role = await getUserProfileRole(supabase, user.id);
 
-  if (profile?.role !== "manager") {
+  if (!isManager(role)) {
     throw new Error("Forbidden");
   }
 

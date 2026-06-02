@@ -8,6 +8,19 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Shop price rounding (`roundPriceCad`)
+
+**Context:** Raw Collectr/market prices often land on odd cents (e.g. $0.04, $1.43).
+The shop wants clean, buyer-friendly price points.
+
+**Decision:** Every write to `cards.price_cad` goes through `roundPriceCad()` in
+`src/lib/currency.ts`: under **$0.50 → $0.50**, under **$1 → $1**, **$1+ → floor**
+to whole dollars. Collectr imports use `importPriceCad()` (USD→CAD then round).
+Applied in admin edit, manual add, CSV import, and Collectr sync apply. Migration
+`006_round_card_prices.sql` backfilled existing rows.
+
+---
+
 ## Theming: class-based dark mode via CSS variables
 
 **Context:** Needed a light/dark toggle. The palette was already CSS variables in

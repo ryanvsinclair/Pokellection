@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertManager } from "@/lib/admin-auth";
+import { roundPriceCad } from "@/lib/currency";
 import { createClient } from "@/lib/supabase/server";
 import type { CardCondition, CardStatus } from "@/types/database";
 
@@ -60,7 +61,7 @@ export async function saveCardEdits(formData: FormData) {
       card_number: String(formData.get("card_number") ?? "") || null,
       rarity: String(formData.get("rarity") ?? "") || null,
       condition,
-      price_cad: Number(formData.get("price_cad") ?? 0),
+      price_cad: roundPriceCad(Number(formData.get("price_cad") ?? 0)),
       quantity: Number(formData.get("quantity") ?? 1),
       description: String(formData.get("description") ?? "") || null,
       status,

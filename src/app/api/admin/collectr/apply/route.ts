@@ -8,6 +8,7 @@ import {
   parseCollectrIdentityFromTag,
   type CollectrPortfolioItem,
 } from "@/lib/collectr";
+import { roundPriceCad } from "@/lib/currency";
 import { createClient } from "@/lib/supabase/server";
 
 interface ExistingCollectrCard {
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
           rarity: item.rarity,
           condition: item.condition,
           printing: item.productSubType,
-          price_cad: item.marketPriceCad,
+          price_cad: roundPriceCad(item.marketPriceCad),
           quantity: item.quantity,
           status: "available",
           description: "Imported from Collectr showcase.",
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
           rarity: item.rarity,
           condition: item.condition,
           printing: item.productSubType,
-          price_cad: item.marketPriceCad,
+          price_cad: roundPriceCad(item.marketPriceCad),
           quantity: item.quantity,
           status: existing.status === "sold" ? "available" : existing.status,
         })

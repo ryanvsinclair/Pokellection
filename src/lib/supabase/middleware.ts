@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getUserProfileRole, isBuyer, isManager } from "@/lib/auth-roles";
 import type { Database } from "@/types/database";
 
 export async function updateSession(request: NextRequest) {
@@ -38,14 +39,9 @@ export async function updateSession(request: NextRequest) {
   const isAccountRoute = pathname.startsWith("/account");
   const isCheckout = pathname === "/checkout";
 
-  let profileRole: "manager" | "buyer" | null = null;
+  let profileRole = null;
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    profileRole = profile?.role ?? null;
+    profileRole = await getUserProfileRole(supabase, user.id);
   }
 
   if (isAdminRoute) {
@@ -55,16 +51,22 @@ export async function updateSession(request: NextRequest) {
       url.searchParams.set("redirect", pathname);
       return NextResponse.redirect(url);
     }
-    if (profileRole !== "manager") {
+    if (!isManager(profileRole)) {
       const url = request.nextUrl.clone();
       url.pathname = "/account";
       return NextResponse.redirect(url);
     }
   }
 
-  if (isManagerLogin && user && profileRole === "manager") {
+  if (isManagerLogin && user && isManager(profileRole)) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
+    return NextResponse.redirect(url);
+  }
+
+  if (isManagerLogin && user && isBuyer(profileRole)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/account";
     return NextResponse.redirect(url);
   }
 
@@ -77,9 +79,15 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (isAccountAuthRoute && user && profileRole === "buyer") {
+  if (isAccountAuthRoute && user && isBuyer(profileRole)) {
     const url = request.nextUrl.clone();
     url.pathname = "/account";
+    return NextResponse.redirect(url);
+  }
+
+  if (isAccountAuthRoute && user && isManager(profileRole)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
