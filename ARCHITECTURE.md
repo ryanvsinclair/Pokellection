@@ -41,7 +41,7 @@ for Production/Preview; a broken deploy (middleware 500) prevents any page from 
 **Vercel log `ReferenceError: __dirname is not defined`:** Usually Edge middleware +
 `next/server` (ua-parser) when Vercel **Framework Preset** is not **Next.js**, or
 Edge lacks the polyfill. Fix: Project Settings → Framework = **Next.js**; in
-`src/middleware.ts` set `export const config = { runtime: "nodejs", ... }` (stable in
+`src/middleware.ts` set `export const runtime = "nodejs"` after imports (stable in
 Next 15.5+). Exclude `sw.js` from the matcher if a stale service worker requests it.
 
 ---
