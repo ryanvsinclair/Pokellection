@@ -30,11 +30,28 @@ function redirect(request: NextRequest, pathname: string, session: NextResponse,
   return withSessionCookies(session, NextResponse.redirect(url));
 }
 
+function loginRedirect(
+  request: NextRequest,
+  returnPath: string,
+  session?: NextResponse,
+): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = "/login";
+  url.searchParams.set("redirect", returnPath);
+  const response = NextResponse.redirect(url);
+  return session ? withSessionCookies(session, response) : response;
+}
+
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const pathname = request.nextUrl.pathname;
+  const isAdminRoute = pathname.startsWith("/admin");
 
   if (!supabaseUrl || !supabaseKey) {
+    if (isAdminRoute) {
+      return loginRedirect(request, pathname);
+    }
     return NextResponse.next({ request });
   }
 
@@ -61,53 +78,52 @@ export async function middleware(request: NextRequest) {
       error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError) {
-      return supabaseResponse;
-    }
+    const sessionUser = authError ? null : user;
 
-    const pathname = request.nextUrl.pathname;
-    const isAdminRoute = pathname.startsWith("/admin");
     const isManagerLogin = pathname === "/login";
     const isAccountAuthRoute =
       pathname === "/account/login" || pathname === "/account/signup";
     const isAccountRoute = pathname.startsWith("/account");
     const isCheckout = pathname === "/checkout";
 
-    const profileRole = (user?.app_metadata?.role as UserRole | undefined) ?? null;
+    const profileRole = (sessionUser?.app_metadata?.role as UserRole | undefined) ?? null;
 
     if (isAdminRoute) {
-      if (!user) {
-        return redirect(request, "/login", supabaseResponse, { redirect: pathname });
+      if (!sessionUser) {
+        return loginRedirect(request, pathname, supabaseResponse);
       }
       if (!isManager(profileRole)) {
         return redirect(request, "/account", supabaseResponse);
       }
     }
 
-    if (isManagerLogin && user && isManager(profileRole)) {
+    if (isManagerLogin && sessionUser && isManager(profileRole)) {
       return redirect(request, "/admin", supabaseResponse);
     }
 
-    if (isManagerLogin && user && isBuyer(profileRole)) {
+    if (isManagerLogin && sessionUser && isBuyer(profileRole)) {
       return redirect(request, "/account", supabaseResponse);
     }
 
     if ((isAccountRoute && !isAccountAuthRoute) || isCheckout) {
-      if (!user) {
+      if (!sessionUser) {
         return redirect(request, "/account/login", supabaseResponse, { redirect: pathname });
       }
     }
 
-    if (isAccountAuthRoute && user && isBuyer(profileRole)) {
+    if (isAccountAuthRoute && sessionUser && isBuyer(profileRole)) {
       return redirect(request, "/account", supabaseResponse);
     }
 
-    if (isAccountAuthRoute && user && isManager(profileRole)) {
+    if (isAccountAuthRoute && sessionUser && isManager(profileRole)) {
       return redirect(request, "/login", supabaseResponse);
     }
 
     return supabaseResponse;
   } catch {
+    if (isAdminRoute) {
+      return loginRedirect(request, pathname);
+    }
     return NextResponse.next({ request });
   }
 }

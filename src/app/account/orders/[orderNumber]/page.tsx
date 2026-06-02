@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatCad } from "@/lib/utils";
+import { SupportContact } from "@/components/SupportContact";
+import { formatFulfillmentOptionLabel } from "@/lib/checkout-options";
+import { formatCad, getEtransferEmail } from "@/lib/utils";
 import { getTrackingUrl } from "@/lib/tracking";
 
 interface Props {
@@ -51,8 +53,15 @@ export default async function OrderDetailPage({ params }: Props) {
           <span className="capitalize">{order.payment_status.replace("_", " ")}</span>
         </p>
         <p className="mt-1">
-          <span className="text-muted">Fulfillment:</span>{" "}
+          <span className="text-muted">Status:</span>{" "}
           <span className="capitalize">{order.fulfillment_status.replace("_", " ")}</span>
+        </p>
+        <p className="mt-1">
+          <span className="text-muted">Delivery:</span>{" "}
+          {formatFulfillmentOptionLabel(
+            order.fulfillment_option,
+            order.shipping_address as { delivery_area?: string } | null,
+          )}
         </p>
         <p className="mt-1">
           <span className="text-muted">Total:</span> {formatCad(order.total_cad)}
@@ -64,7 +73,12 @@ export default async function OrderDetailPage({ params }: Props) {
           <p className="font-semibold text-amber-900 dark:text-amber-200">E-transfer instructions</p>
           <p className="mt-2 text-amber-800 dark:text-amber-300">
             Send {formatCad(order.total_cad)} to{" "}
-            <strong>{settings?.etransfer_email || "see email confirmation"}</strong>
+            <a
+              href={`mailto:${getEtransferEmail(settings)}`}
+              className="font-semibold underline underline-offset-2"
+            >
+              {getEtransferEmail(settings)}
+            </a>
           </p>
           <p className="mt-1 text-amber-800 dark:text-amber-300">
             Memo: <strong>{order.order_number}</strong>
@@ -93,6 +107,11 @@ export default async function OrderDetailPage({ params }: Props) {
           Tracking will appear here once your order ships.
         </p>
       )}
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <p className="text-sm font-semibold">Questions about this order?</p>
+        <SupportContact orderNumber={order.order_number} className="mt-2" />
+      </div>
 
       <ul className="space-y-2 rounded-xl border border-border bg-card p-4">
         <p className="text-sm font-semibold">Items</p>

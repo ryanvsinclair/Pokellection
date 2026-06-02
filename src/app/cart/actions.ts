@@ -2,45 +2,96 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { canIncreaseCartQuantity } from "@/lib/cart-inventory";
+import {
+  fulfillmentTypeForOption,
+  isFulfillmentOption,
+  validateCheckoutSelection,
+} from "@/lib/checkout-options";
+import { getCartItemCount } from "@/lib/queries/cart";
 import { generateOrderNumber } from "@/lib/tracking";
 import { createClient } from "@/lib/supabase/server";
 
-export async function addToCart(formData: FormData) {
-  const cardId = String(formData.get("card_id") ?? "");
-  if (!cardId) return;
+export type AddToCartResult =
+  | { ok: true; count: number; lineQuantity: number }
+  | {
+      ok: false;
+      error: "missing_card" | "auth" | "failed" | "unavailable" | "max_quantity";
+      stockQuantity?: number;
+      inCartQuantity?: number;
+    };
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    const redirectTo = String(formData.get("redirect") ?? "/checkout");
-    redirect(`/account/login?redirect=${encodeURIComponent(redirectTo)}`);
-  }
-
-  const { data: existing } = await supabase
-    .from("cart_items")
-    .select("id, quantity")
-    .eq("user_id", user.id)
-    .eq("card_id", cardId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase
-      .from("cart_items")
-      .update({ quantity: existing.quantity + 1 })
-      .eq("id", existing.id);
-  } else {
-    await supabase.from("cart_items").insert({
-      user_id: user.id,
-      card_id: cardId,
-      quantity: 1,
-    });
-  }
-
+function revalidateCartSurfaces() {
   revalidatePath("/checkout");
   revalidatePath("/shop");
+}
+
+export async function addToCartAction(
+  _prev: AddToCartResult | null,
+  formData: FormData,
+): Promise<AddToCartResult> {
+  const cardId = String(formData.get("card_id") ?? "");
+  if (!cardId) return { ok: false, error: "missing_card" };
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { ok: false, error: "auth" };
+    }
+
+    const { data: card } = await supabase
+      .from("cards")
+      .select("quantity, status")
+      .eq("id", cardId)
+      .maybeSingle();
+
+    if (!card || card.status !== "available" || card.quantity < 1) {
+      return { ok: false, error: "unavailable" };
+    }
+
+    const { data: existing } = await supabase
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("user_id", user.id)
+      .eq("card_id", cardId)
+      .maybeSingle();
+
+    const inCart = existing?.quantity ?? 0;
+    if (!canIncreaseCartQuantity(card.quantity, inCart)) {
+      return {
+        ok: false,
+        error: "max_quantity",
+        stockQuantity: card.quantity,
+        inCartQuantity: inCart,
+      };
+    }
+
+    const lineQuantity = inCart + 1;
+
+    if (existing) {
+      const { error } = await supabase
+        .from("cart_items")
+        .update({ quantity: lineQuantity })
+        .eq("id", existing.id);
+      if (error) return { ok: false, error: "failed" };
+    } else {
+      const { error } = await supabase.from("cart_items").insert({
+        user_id: user.id,
+        card_id: cardId,
+        quantity: lineQuantity,
+      });
+      if (error) return { ok: false, error: "failed" };
+    }
+
+    const count = await getCartItemCount(supabase, user.id);
+    return { ok: true, count, lineQuantity };
+  } catch {
+    return { ok: false, error: "failed" };
+  }
 }
 
 export async function updateCartQuantity(formData: FormData) {
@@ -54,13 +105,37 @@ export async function updateCartQuantity(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/account/login?redirect=/checkout");
 
+  const { data: cartItem } = await supabase
+    .from("cart_items")
+    .select("card_id")
+    .eq("id", cartItemId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!cartItem) return;
+
+  const { data: card } = await supabase
+    .from("cards")
+    .select("quantity, status")
+    .eq("id", cartItem.card_id)
+    .maybeSingle();
+
+  if (!card || card.status !== "available") {
+    redirect("/checkout?error=unavailable");
+  }
+
+  const cappedQuantity = Math.min(quantity, card.quantity);
+
   await supabase
     .from("cart_items")
-    .update({ quantity })
+    .update({ quantity: cappedQuantity })
     .eq("id", cartItemId)
     .eq("user_id", user.id);
 
-  revalidatePath("/checkout");
+  revalidateCartSurfaces();
+  if (quantity > card.quantity) {
+    redirect("/checkout?error=max_quantity");
+  }
 }
 
 export async function removeFromCart(formData: FormData) {
@@ -74,7 +149,7 @@ export async function removeFromCart(formData: FormData) {
   if (!user) redirect("/account/login?redirect=/checkout");
 
   await supabase.from("cart_items").delete().eq("id", cartItemId).eq("user_id", user.id);
-  revalidatePath("/checkout");
+  revalidateCartSurfaces();
 }
 
 export async function placeOrder(formData: FormData) {
@@ -90,21 +165,30 @@ export async function placeOrder(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  const shippingMethod = String(formData.get("shipping_method") ?? "untracked") as
-    | "untracked"
-    | "tracked";
+  const fulfillmentOptionRaw = String(formData.get("fulfillment_option") ?? "");
+  if (!isFulfillmentOption(fulfillmentOptionRaw)) {
+    redirect("/checkout?error=invalid_option");
+  }
+
   const buyerName = String(formData.get("buyer_name") ?? profile?.display_name ?? "");
   const buyerPhone = String(formData.get("buyer_phone") ?? profile?.phone ?? "");
   const street = String(formData.get("street") ?? "");
   const city = String(formData.get("city") ?? "");
   const province = String(formData.get("province") ?? "ON");
   const postalCode = String(formData.get("postal_code") ?? "");
+  const deliveryArea = String(formData.get("delivery_area") ?? "") || null;
 
-  const { data: settings } = await supabase.from("site_settings").select("*").eq("id", 1).single();
-  const shippingFee =
-    shippingMethod === "tracked"
-      ? Number(settings?.tracked_shipping_fee_cad ?? 15)
-      : Number(settings?.untracked_shipping_fee_cad ?? 3);
+  const checkoutValidation = validateCheckoutSelection(
+    fulfillmentOptionRaw,
+    deliveryArea,
+    { street, city, province, postalCode },
+  );
+  if (!checkoutValidation.ok) {
+    redirect(`/checkout?error=${checkoutValidation.error}`);
+  }
+
+  const shippingFee = checkoutValidation.feeCad;
+  const fulfillmentType = fulfillmentTypeForOption(fulfillmentOptionRaw);
 
   const { data: cartRows } = await supabase
     .from("cart_items")
@@ -119,10 +203,18 @@ export async function placeOrder(formData: FormData) {
   const { data: cards } = await supabase.from("cards").select("*").in("id", cardIds);
   const cardMap = new Map((cards ?? []).map((card) => [card.id, card]));
 
+  const overStock = cartRows.some((row) => {
+    const card = cardMap.get(row.card_id);
+    return card && row.quantity > card.quantity;
+  });
+  if (overStock) {
+    redirect("/checkout?error=max_quantity");
+  }
+
   const lineItems = cartRows
     .map((row) => {
       const card = cardMap.get(row.card_id);
-      if (!card || card.status !== "available") return null;
+      if (!card || card.status !== "available" || row.quantity > card.quantity) return null;
       return { cartItemId: row.id, card, quantity: row.quantity };
     })
     .filter(Boolean) as {
@@ -147,6 +239,19 @@ export async function placeOrder(formData: FormData) {
   const total = subtotal + shippingFee;
   const orderNumber = generateOrderNumber();
 
+  const shippingAddress =
+    fulfillmentOptionRaw === "canada_ship" || fulfillmentOptionRaw === "next_day_delivery"
+      ? {
+          street,
+          city,
+          province,
+          postal_code: postalCode,
+          ...(fulfillmentOptionRaw === "next_day_delivery" && deliveryArea
+            ? { delivery_area: deliveryArea }
+            : {}),
+        }
+      : null;
+
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
@@ -155,12 +260,13 @@ export async function placeOrder(formData: FormData) {
       buyer_email: user.email ?? "",
       buyer_name: buyerName,
       buyer_phone: buyerPhone,
-      fulfillment_type: "ship",
-      shipping_method: shippingMethod,
+      fulfillment_type: fulfillmentType,
+      fulfillment_option: fulfillmentOptionRaw,
+      shipping_method: null,
       shipping_fee_cad: shippingFee,
       subtotal_cad: subtotal,
       total_cad: total,
-      shipping_address: { street, city, province, postal_code: postalCode },
+      shipping_address: shippingAddress,
       payment_method: "etransfer",
       payment_status: "awaiting_transfer",
       fulfillment_status: "pending",
@@ -188,8 +294,7 @@ export async function placeOrder(formData: FormData) {
 
   await supabase.from("cart_items").delete().eq("user_id", user.id);
 
-  revalidatePath("/checkout");
-  revalidatePath("/shop");
+  revalidateCartSurfaces();
   revalidatePath("/account/orders");
 
   redirect(`/account/orders/${orderNumber}`);

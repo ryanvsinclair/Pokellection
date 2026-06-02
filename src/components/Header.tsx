@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { AuthNavLink } from "@/components/AuthNavLink";
+import { CartNavLink } from "@/components/CartNavLink";
 import { MobileNavMenu, type NavLinkItem } from "@/components/MobileNavMenu";
 import { SiteLogo } from "@/components/SiteLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -7,10 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/database";
 
 function buildNavLinks(user: { id: string } | null, role: UserRole | null): NavLinkItem[] {
-  const links: NavLinkItem[] = [
-    { href: "/shop", label: "Shop" },
-    { href: "/checkout", label: "Cart" },
-  ];
+  const links: NavLinkItem[] = [{ href: "/shop", label: "Shop" }];
 
   if (user) {
     links.push(
@@ -20,11 +19,6 @@ function buildNavLinks(user: { id: string } | null, role: UserRole | null): NavL
     if (isManager(role)) {
       links.push({ href: "/admin", label: "Admin", muted: true });
     }
-  } else {
-    links.push(
-      { href: "/account/login", label: "Sign in" },
-      { href: "/account/signup", label: "Sign up" },
-    );
   }
 
   return links;
@@ -54,7 +48,9 @@ export async function Header() {
                 {link.label}
               </Link>
             ))}
+            <CartNavLink />
           </nav>
+          {!user && <AuthNavLink />}
           <ThemeToggle />
           <MobileNavMenu links={navLinks} />
         </div>

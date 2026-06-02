@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { requireManagerPage } from "@/lib/admin-auth";
+import { createClient } from "@/lib/supabase/server";
 
 const nav = [
   { href: "/admin", label: "Dashboard" },
@@ -10,7 +12,10 @@ const nav = [
   { href: "/admin/settings", label: "Settings" },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  await requireManagerPage(supabase);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">

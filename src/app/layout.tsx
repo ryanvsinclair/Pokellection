@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { CartCountProvider } from "@/components/CartCountProvider";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { getCartItemCount } from "@/lib/queries/cart";
+import { createClient } from "@/lib/supabase/server";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/utils";
 import "./globals.css";
 
@@ -34,11 +37,17 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const initialCartCount = user ? await getCartItemCount(supabase, user.id) : 0;
+
   return (
     <html lang="en-CA" suppressHydrationWarning>
       <head>
@@ -50,11 +59,13 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} min-h-dvh antialiased`}>
-        <Header />
-        <main className="mx-auto min-h-[calc(100dvh-8rem)] w-full max-w-6xl px-4 py-6">
-          {children}
-        </main>
-        <Footer />
+        <CartCountProvider initialCount={initialCartCount}>
+          <Header />
+          <main className="mx-auto min-h-[calc(100dvh-8rem)] w-full max-w-6xl px-4 py-6">
+            {children}
+          </main>
+          <Footer />
+        </CartCountProvider>
       </body>
     </html>
   );

@@ -16,6 +16,7 @@ import { formatCondition } from "@/lib/utils";
 
 interface Props {
   cards: Card[];
+  cartQtyByCardId?: Record<string, number>;
 }
 
 const SORT_OPTIONS: { value: ShopSort; label: string }[] = [
@@ -32,7 +33,7 @@ const selectClassName =
 
 const labelClassName = "text-xs font-semibold uppercase tracking-wide text-muted";
 
-export function ShopBrowser({ cards }: Props) {
+export function ShopBrowser({ cards, cartQtyByCardId = {} }: Props) {
   const [filters, setFilters] = useState<ShopFilters>(DEFAULT_SHOP_FILTERS);
   const [sort, setSort] = useState<ShopSort>(DEFAULT_SHOP_SORT);
 
@@ -157,6 +158,7 @@ export function ShopBrowser({ cards }: Props) {
 
       <CardGrid
         cards={visibleCards}
+        cartQtyByCardId={cartQtyByCardId}
         emptyMessage={
           hasActiveFilters
             ? "No cards match your search or filters."

@@ -8,6 +8,57 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Checkout fulfillment options (Ottawa ET)
+
+**Context:** Checkout needs Canada ship, Ottawa pickup windows, and zoned next-day
+delivery — not just untracked/tracked mail.
+
+**Decision:** `orders.fulfillment_option` (`008_fulfillment_options.sql`) stores
+`canada_ship` | `next_day_pickup` | `same_day_pickup` | `next_day_delivery`.
+Fees and cutoffs live in `src/lib/checkout-options.ts` (America/Toronto): ship $20
+min fee; same-day pickup +$5 after 5 PM; next-day pickup by 10:30 PM; next-day
+delivery by 11 PM with area fees in `shipping_address.delivery_area`. UI:
+`CheckoutForm`; server validates in `placeOrder`.
+
+---
+
+## Cart quantity capped by `cards.quantity`
+
+**Context:** Buyers could add more cart units than the listing’s `cards.quantity` (shop
+inventory).
+
+**Decision:** `addToCartAction` loads `cards.quantity` + status and rejects when
+`inCart + 1` would exceed stock (`max_quantity`). Checkout `updateCartQuantity` caps
+to `min(requested, card.quantity)`. UI passes `stockQuantity` / `cartQuantity` into
+`AddToCartButton` so the + control disables at the limit.
+
+---
+
+## `/admin` requires manager (middleware + layout)
+
+**Context:** Guests could see the admin shell when middleware treated `getUser()`
+errors as “continue” or when the `catch` block called `next()`.
+
+**Decision:** Admin routes redirect to `/login?redirect=…` if unauthenticated; non-managers
+to `/account`. `requireManagerPage()` in `admin/layout.tsx` repeats the check from the
+DB role (defense in depth). Do not return `next()` on auth errors for `/admin`.
+
+---
+
+## Add to cart + `useActionState`: no layout revalidate in the action
+
+**Context:** Clicking add to cart threw “An unexpected response was received from the
+server” (Turbopack / Next 15).
+
+**Decision:** `addToCartAction` returns `{ ok, count }` only — no `revalidatePath` and
+no `redirect()` inside that action. Client updates badge via returned `count`,
+then `router.refresh()`; guests get `{ error: "auth" }` and client navigates to
+login. Checkout/remove/update actions may still `revalidatePath` (plain forms, not
+`useActionState`). Avoid `revalidatePath("/", "layout")` inside any `useActionState`
+handler — it races the action RSC payload.
+
+---
+
 ## Site logo: transparent PNG + dark variant
 
 **Context:** `pokellection-logo-mark.png` had an opaque white matte; in dark mode the
@@ -44,6 +95,10 @@ If auth refresh fails (`getUser` error), return the pass-through response instea
 errors, `getAvailableCards` returns `[]` — check server logs for `[getAvailableCards]`.
 Restart `next dev` after editing `.env.local`. On Vercel, set `NEXT_PUBLIC_SUPABASE_*`
 for Production/Preview; a broken deploy (middleware 500) prevents any page from loading.
+
+**Dev ENOENT `build-manifest.json` / `_buildManifest.js.tmp`:** Corrupt or deleted
+`.next` while `next dev` is still running (common after clearing cache mid-session).
+Stop the dev server, `rm -rf .next`, then `npm run dev` (or `npm run dev:clean`).
 
 **Dev `TypeError: fetch failed` (empty `code`):** Network/DNS — not RLS. Usually
 (1) `.env.local` not saved or dev server not restarted, (2) placeholder URL still on disk,

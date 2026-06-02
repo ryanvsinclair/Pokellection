@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateOrder } from "@/app/admin/orders/actions";
 import { createClient } from "@/lib/supabase/server";
+import { formatFulfillmentOptionLabel } from "@/lib/checkout-options";
 import { formatCad } from "@/lib/utils";
 
 interface Props {
@@ -28,6 +29,13 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           {order.buyer_name} · {order.buyer_email} · {order.buyer_phone}
         </p>
         <p className="mt-1 text-sm font-medium">{formatCad(order.total_cad)}</p>
+        <p className="mt-1 text-sm text-muted">
+          {formatFulfillmentOptionLabel(
+            order.fulfillment_option,
+            order.shipping_address as { delivery_area?: string } | null,
+          )}
+          {order.shipping_fee_cad > 0 && ` · Fee ${formatCad(order.shipping_fee_cad)}`}
+        </p>
       </div>
 
       <ul className="rounded-xl border border-border bg-card p-4 text-sm">

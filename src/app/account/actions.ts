@@ -19,12 +19,16 @@ export async function signUpBuyer(formData: FormData) {
     },
   });
 
+  const redirectTo = String(formData.get("redirect") ?? "/account");
+
   if (error) {
-    redirect(`/account/signup?error=${encodeURIComponent(error.message)}`);
+    const params = new URLSearchParams({ error: error.message });
+    if (redirectTo !== "/account") params.set("redirect", redirectTo);
+    redirect(`/account/signup?${params.toString()}`);
   }
 
   revalidatePath("/account");
-  redirect("/account");
+  redirect(redirectTo);
 }
 
 export async function signInBuyer(formData: FormData) {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useCartCount } from "@/components/CartCountProvider";
 
 export interface NavLinkItem {
   href: string;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function MobileNavMenu({ links }: Props) {
+  const { count } = useCartCount();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +71,18 @@ export function MobileNavMenu({ links }: Props) {
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/checkout"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-between px-4 py-2.5 text-sm font-medium transition hover:bg-surface"
+          >
+            <span>Cart</span>
+            {count > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
+                {count > 99 ? "99+" : count}
+              </span>
+            )}
+          </Link>
         </nav>
       )}
     </div>

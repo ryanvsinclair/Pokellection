@@ -6,10 +6,15 @@ import { formatCad, formatCondition, getPhotoUrl } from "@/lib/utils";
 
 interface CardGridProps {
   cards: Card[];
+  cartQtyByCardId?: Record<string, number>;
   emptyMessage?: string;
 }
 
-export function CardGrid({ cards, emptyMessage = "No cards available right now." }: CardGridProps) {
+export function CardGrid({
+  cards,
+  cartQtyByCardId = {},
+  emptyMessage = "No cards available right now.",
+}: CardGridProps) {
   if (cards.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center text-sm text-muted">
@@ -69,7 +74,12 @@ export function CardGrid({ cards, emptyMessage = "No cards available right now."
                   <p className="text-lg font-bold text-primary">{formatCad(card.price_cad)}</p>
                   <p className="text-xs text-teal-600 dark:text-teal-400">Qty: {card.quantity}</p>
                 </div>
-                <AddToCartButton cardId={card.id} variant="icon" />
+                <AddToCartButton
+                  cardId={card.id}
+                  stockQuantity={card.quantity}
+                  cartQuantity={cartQtyByCardId[card.id] ?? 0}
+                  variant="icon"
+                />
               </div>
             </div>
           </div>

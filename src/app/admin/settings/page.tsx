@@ -1,4 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  BUSINESS_EMAIL,
+  ORDER_SUPPORT_PHONE_DISPLAY,
+  ORDER_SUPPORT_SMS_INSTRUCTIONS,
+} from "@/lib/utils";
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient();
@@ -14,8 +19,21 @@ export default async function AdminSettingsPage() {
             <dd className="font-medium">{settings.pickup_location_label}</dd>
           </div>
           <div>
+            <dt className="text-muted">Contact email</dt>
+            <dd className="font-medium">{settings.contact_email || BUSINESS_EMAIL}</dd>
+          </div>
+          <div>
             <dt className="text-muted">E-transfer email</dt>
-            <dd className="font-medium">{settings.etransfer_email}</dd>
+            <dd className="font-medium">{settings.etransfer_email || BUSINESS_EMAIL}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">Order support text</dt>
+            <dd className="font-medium">
+              {ORDER_SUPPORT_PHONE_DISPLAY}
+              <span className="mt-1 block text-xs font-normal text-muted">
+                {ORDER_SUPPORT_SMS_INSTRUCTIONS}
+              </span>
+            </dd>
           </div>
           <div>
             <dt className="text-muted">Untracked shipping</dt>

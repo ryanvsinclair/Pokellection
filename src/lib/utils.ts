@@ -3,6 +3,25 @@ export const SITE_DESCRIPTION =
   "Buy Pokemon cards in Ottawa — same-day local pickup or shipped anywhere in Canada via e-transfer.";
 export const LOCATION = "Ottawa, Ontario";
 
+export const BUSINESS_EMAIL = "hello@pokellection.com";
+/** E.164 without plus — used for tel:/sms: links */
+export const ORDER_SUPPORT_PHONE = "6139812555";
+export const ORDER_SUPPORT_PHONE_DISPLAY = "(613) 981-2555";
+export const ORDER_SUPPORT_SMS_INSTRUCTIONS =
+  "Text must start with your order number, then your question.";
+
+export function orderSupportSmsHref(orderNumber?: string): string {
+  const body = orderNumber ? `${orderNumber} ` : "";
+  return body ? `sms:${ORDER_SUPPORT_PHONE}?body=${encodeURIComponent(body)}` : `sms:${ORDER_SUPPORT_PHONE}`;
+}
+
+export function getEtransferEmail(
+  settings?: { etransfer_email?: string | null } | null,
+): string {
+  const fromDb = settings?.etransfer_email?.trim();
+  return fromDb || BUSINESS_EMAIL;
+}
+
 export function formatCad(amount: number): string {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",

@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { CardGrid } from "@/components/CardGrid";
+import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseFetchError } from "@/lib/supabase/env";
 
 export default async function HomePage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data: cards, error } = await supabase
     .from("cards")
     .select("*")
@@ -15,6 +19,10 @@ export default async function HomePage() {
   if (error) {
     logSupabaseFetchError("HomePage cards", error);
   }
+
+  const cartQtyByCardId = user
+    ? await getCartQuantitiesByCardId(supabase, user.id)
+    : {};
 
   return (
     <div className="space-y-10">
@@ -52,7 +60,11 @@ export default async function HomePage() {
             View all
           </Link>
         </div>
-        <CardGrid cards={cards ?? []} emptyMessage="No cards listed yet. Check back soon!" />
+        <CardGrid
+          cards={cards ?? []}
+          cartQtyByCardId={cartQtyByCardId}
+          emptyMessage="No cards listed yet. Check back soon!"
+        />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">

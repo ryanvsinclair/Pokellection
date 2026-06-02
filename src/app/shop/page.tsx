@@ -1,5 +1,6 @@
 import { ShopBrowser } from "@/components/ShopBrowser";
 import { getAvailableCards } from "@/lib/queries/cards";
+import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -8,7 +9,13 @@ export const metadata = {
 
 export default async function ShopPage() {
   const supabase = await createClient();
-  const cards = await getAvailableCards(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const [cards, cartQtyByCardId] = await Promise.all([
+    getAvailableCards(supabase),
+    user ? getCartQuantitiesByCardId(supabase, user.id) : Promise.resolve({}),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -18,7 +25,7 @@ export default async function ShopPage() {
           All available singles — pickup in Ottawa or ship anywhere in Canada.
         </p>
       </div>
-      <ShopBrowser cards={cards} />
+      <ShopBrowser cards={cards} cartQtyByCardId={cartQtyByCardId} />
     </div>
   );
 }

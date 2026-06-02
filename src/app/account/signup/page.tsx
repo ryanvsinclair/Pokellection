@@ -4,9 +4,12 @@ import { signUpBuyer } from "@/app/account/actions";
 export default async function BuyerSignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; redirect?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, redirect: redirectTo } = await searchParams;
+  const loginHref = redirectTo
+    ? `/account/login?redirect=${encodeURIComponent(redirectTo)}`
+    : "/account/login";
 
   return (
     <div className="mx-auto max-w-md space-y-6">
@@ -16,6 +19,9 @@ export default async function BuyerSignupPage({
       </div>
 
       <form action={signUpBuyer} className="space-y-4 rounded-xl border border-border bg-card p-5">
+        {redirectTo && (
+          <input type="hidden" name="redirect" value={redirectTo} />
+        )}
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Display name</span>
           <input name="display_name" className="w-full rounded-lg border border-border px-3 py-2" />
@@ -34,12 +40,15 @@ export default async function BuyerSignupPage({
         </button>
       </form>
 
-      <p className="text-center text-sm text-muted">
-        Already have an account?{" "}
-        <Link href="/account/login" className="font-medium text-primary">
+      <div className="space-y-2 text-center">
+        <p className="text-sm text-muted">Already have an account?</p>
+        <Link
+          href={loginHref}
+          className="inline-flex w-full items-center justify-center rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold transition hover:bg-surface"
+        >
           Sign in
         </Link>
-      </p>
+      </div>
     </div>
   );
 }

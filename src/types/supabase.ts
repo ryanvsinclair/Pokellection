@@ -156,6 +156,7 @@ export type Database = {
           buyer_phone: string
           created_at: string
           etransfer_reference: string | null
+          fulfillment_option: string | null
           fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
           fulfillment_type: Database["public"]["Enums"]["fulfillment_type"]
           id: string
@@ -177,6 +178,7 @@ export type Database = {
           buyer_phone: string
           created_at?: string
           etransfer_reference?: string | null
+          fulfillment_option?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           fulfillment_type: Database["public"]["Enums"]["fulfillment_type"]
           id?: string
@@ -200,6 +202,7 @@ export type Database = {
           buyer_phone?: string
           created_at?: string
           etransfer_reference?: string | null
+          fulfillment_option?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
           fulfillment_type?: Database["public"]["Enums"]["fulfillment_type"]
           id?: string

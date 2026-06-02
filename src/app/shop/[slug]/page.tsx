@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { getAvailableCardBySlug } from "@/lib/queries/cards";
+import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad, getPhotoUrl } from "@/lib/utils";
 
@@ -28,6 +29,14 @@ export default async function CardDetailPage({ params }: Props) {
   const card = await getAvailableCardBySlug(supabase, slug);
 
   if (!card) notFound();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const cartQtyByCardId = user
+    ? await getCartQuantitiesByCardId(supabase, user.id)
+    : {};
+  const cartQuantity = cartQtyByCardId[card.id] ?? 0;
 
   const photo = card.photo_paths[0];
 
@@ -79,7 +88,11 @@ export default async function CardDetailPage({ params }: Props) {
           >
             Reserve for pickup
           </Link>
-          <AddToCartButton cardId={card.id} />
+          <AddToCartButton
+            cardId={card.id}
+            stockQuantity={card.quantity}
+            cartQuantity={cartQuantity}
+          />
           <Link
             href="/checkout"
             className="rounded-lg bg-foreground px-5 py-3 text-center text-sm font-semibold text-background"

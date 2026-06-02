@@ -1,8 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { placeOrder, removeFromCart, updateCartQuantity } from "@/app/cart/actions";
+import { CheckoutForm } from "@/components/CheckoutForm";
+import { removeFromCart, updateCartQuantity } from "@/app/cart/actions";
+import { getCheckoutOptionAvailability } from "@/lib/checkout-options";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad } from "@/lib/utils";
+
+const CHECKOUT_ERRORS: Record<string, string> = {
+  unavailable:
+    "Some items in your cart are no longer available. Remove them to continue.",
+  max_quantity: "Quantity was limited to what we have in stock.",
+  invalid_option: "Please choose a valid fulfillment option.",
+  missing_delivery_area: "Please select a delivery area.",
+  missing_address: "A full address is required for this option.",
+  option_unavailable: "That fulfillment option is not available right now.",
+  next_day_pickup_closed:
+    "Next-day pickup orders must be placed before 10:30 PM (Ottawa time).",
+  next_day_delivery_closed:
+    "Next-day delivery orders must be placed before 11:00 PM (Ottawa time).",
+  same_day_pickup_unavailable:
+    "Same-day pickup is only available after 5:00 PM (Ottawa time).",
+};
 
 export default async function CheckoutPage({
   searchParams,
@@ -19,10 +37,9 @@ export default async function CheckoutPage({
     redirect("/account/login?redirect=/checkout");
   }
 
-  const [{ data: cartRows }, { data: profile }, { data: settings }] = await Promise.all([
+  const [{ data: cartRows }, { data: profile }] = await Promise.all([
     supabase.from("cart_items").select("id, quantity, card_id").eq("user_id", user.id),
     supabase.from("profiles").select("display_name, phone").eq("id", user.id).single(),
-    supabase.from("site_settings").select("*").eq("id", 1).single(),
   ]);
 
   const cardIds = (cartRows ?? []).map((row) => row.card_id);
@@ -37,25 +54,33 @@ export default async function CheckoutPage({
       if (!card) return null;
       return { row, card };
     })
-    .filter(Boolean) as { row: { id: string; quantity: number }; card: { id: string; title: string; price_cad: number; status: string } }[];
+    .filter(Boolean) as {
+    row: { id: string; quantity: number };
+    card: { id: string; title: string; price_cad: number; status: string; quantity: number };
+  }[];
 
   const subtotal = lines.reduce(
     (sum, line) => sum + Number(line.card.price_cad) * line.row.quantity,
     0,
   );
 
+  const availability = getCheckoutOptionAvailability();
+
+  const errorMessage = error ? CHECKOUT_ERRORS[error] : undefined;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Cart & checkout</h1>
         <p className="mt-1 text-sm text-muted">
-          Pay by e-transfer after placing your order. Shipping anywhere in Canada.
+          Ottawa pickup and delivery, or shipping anywhere in Canada. Pay by e-transfer after
+          placing your order.
         </p>
       </div>
 
-      {error === "unavailable" && (
+      {errorMessage && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-          Some items in your cart are no longer available. Remove them to continue.
+          {errorMessage}
         </p>
       )}
 
@@ -77,7 +102,7 @@ export default async function CheckoutPage({
                 <div>
                   <p className="font-medium">{card.title}</p>
                   <p className="text-sm text-muted">
-                    {formatCad(card.price_cad)} · {card.status}
+                    {formatCad(card.price_cad)} · {card.status} · {card.quantity} in stock
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -87,7 +112,8 @@ export default async function CheckoutPage({
                       type="number"
                       name="quantity"
                       min={1}
-                      defaultValue={row.quantity}
+                      max={card.quantity}
+                      defaultValue={Math.min(row.quantity, card.quantity)}
                       className="w-16 rounded border border-border px-2 py-1 text-sm"
                     />
                     <button type="submit" className="text-xs font-medium text-muted">
@@ -105,75 +131,12 @@ export default async function CheckoutPage({
             ))}
           </ul>
 
-          <p className="text-lg font-semibold">Subtotal: {formatCad(subtotal)}</p>
-
-          <form action={placeOrder} className="space-y-4 rounded-xl border border-border bg-card p-5">
-            <h2 className="font-semibold">Shipping details</h2>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium">Full name</span>
-              <input
-                name="buyer_name"
-                required
-                defaultValue={profile?.display_name ?? ""}
-                className="w-full rounded-lg border border-border px-3 py-2"
-              />
-            </label>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium">Phone</span>
-              <input
-                name="buyer_phone"
-                required
-                defaultValue={profile?.phone ?? ""}
-                className="w-full rounded-lg border border-border px-3 py-2"
-              />
-            </label>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium">Street address</span>
-              <input name="street" required className="w-full rounded-lg border border-border px-3 py-2" />
-            </label>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <label className="block space-y-1 text-sm sm:col-span-2">
-                <span className="font-medium">City</span>
-                <input name="city" required className="w-full rounded-lg border border-border px-3 py-2" />
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Province</span>
-                <input
-                  name="province"
-                  defaultValue="ON"
-                  className="w-full rounded-lg border border-border px-3 py-2"
-                />
-              </label>
-            </div>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium">Postal code</span>
-              <input name="postal_code" required className="w-full rounded-lg border border-border px-3 py-2" />
-            </label>
-
-            <fieldset className="space-y-2 text-sm">
-              <legend className="font-medium">Shipping method</legend>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="shipping_method" value="untracked" defaultChecked />
-                Untracked — {formatCad(Number(settings?.untracked_shipping_fee_cad ?? 3))}
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="shipping_method" value="tracked" />
-                Tracked — {formatCad(Number(settings?.tracked_shipping_fee_cad ?? 15))}
-              </label>
-            </fieldset>
-
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-white"
-            >
-              Place order (e-transfer)
-            </button>
-          </form>
+          <CheckoutForm
+            subtotalCad={subtotal}
+            defaultName={profile?.display_name ?? ""}
+            defaultPhone={profile?.phone ?? ""}
+            availability={availability}
+          />
         </>
       )}
     </div>

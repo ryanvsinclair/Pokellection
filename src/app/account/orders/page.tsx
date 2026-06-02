@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getOrdersForBuyer } from "@/lib/queries/orders";
 import { createClient } from "@/lib/supabase/server";
+import { SupportContact } from "@/components/SupportContact";
 import { formatCad } from "@/lib/utils";
 
 export default async function OrdersPage() {
@@ -18,6 +19,7 @@ export default async function OrdersPage() {
       <div>
         <h1 className="text-2xl font-bold">My orders</h1>
         <p className="mt-1 text-sm text-muted">Track payment, shipping, and delivery status.</p>
+        <SupportContact className="mt-3" />
       </div>
 
       <ul className="space-y-3">
