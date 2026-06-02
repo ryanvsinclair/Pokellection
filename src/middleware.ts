@@ -1,8 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export const runtime = "nodejs";
-
 type UserRole = "manager" | "buyer";
 
 function isManager(role: UserRole | null): boolean {
@@ -115,6 +113,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Must be in `config`, not `export const runtime` — top-level runtime breaks
+  // Vercel Node middleware (ESM/CJS load error). Node avoids Edge __dirname crash.
+  runtime: "nodejs",
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
