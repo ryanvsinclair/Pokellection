@@ -113,7 +113,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Edge on Vercel can throw `ReferenceError: __dirname is not defined` via
+  // next/server → ua-parser-js when the project isn't built as Next.js.
+  runtime: "nodejs",
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

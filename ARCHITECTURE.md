@@ -22,9 +22,15 @@ not a DB read. Migration `007_role_in_jwt.sql` syncs `profiles.role` → `auth.u
 to refresh the JWT.
 
 **Vercel `MIDDLEWARE_INVOCATION_FAILED`:** Do **not** call `request.cookies.set` in
-`setAll` — Edge middleware may only set cookies on the **response**. Recreate
+`setAll` — middleware may only set cookies on the **response**. Recreate
 `NextResponse.next({ request })` in `setAll`, forward cookies on redirects.
 If auth refresh fails (`getUser` error), return the pass-through response instead of throwing.
+
+**Vercel log `ReferenceError: __dirname is not defined`:** Usually Edge middleware +
+`next/server` (ua-parser) when Vercel **Framework Preset** is not **Next.js**, or
+Edge lacks the polyfill. Fix: Project Settings → Framework = **Next.js**; in
+`src/middleware.ts` set `export const config = { runtime: "nodejs", ... }` (stable in
+Next 15.5+). Exclude `sw.js` from the matcher if a stale service worker requests it.
 
 ---
 
