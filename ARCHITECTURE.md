@@ -8,6 +8,19 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Site logo: transparent PNG + dark variant
+
+**Context:** `pokellection-logo-mark.png` had an opaque white matte; in dark mode the
+header showed a white rectangle behind the wordmark.
+
+**Decision:** Light asset uses a transparent background (white keyed to alpha).
+Dark mode swaps to `pokellection-logo-mark-dark.png` (black text/lines → light
+foreground) via `SiteLogo` (`dark:hidden` / `hidden dark:block`). Regenerate both
+from the source art if the mark changes — CSS blend modes alone cannot keep red
+"Poke" and readable "llection" on one raster.
+
+---
+
 ## Middleware must live in `src/middleware.ts` only (Edge bundle)
 
 **Context:** Vercel deploy failed: Edge middleware referenced unsupported module

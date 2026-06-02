@@ -11,6 +11,12 @@ interface Props {
   className?: string;
 }
 
+const logoProps = {
+  width: LOGO_WIDTH,
+  height: LOGO_HEIGHT,
+  sizes: "(max-width: 640px) 220px, 320px" as const,
+};
+
 export function SiteLogo({
   priority = false,
   className = "h-12 w-auto sm:h-16",
@@ -20,11 +26,17 @@ export function SiteLogo({
       <Image
         src="/pokellection-logo-mark.png"
         alt={SITE_NAME}
-        width={LOGO_WIDTH}
-        height={LOGO_HEIGHT}
+        {...logoProps}
         priority={priority}
-        sizes="(max-width: 640px) 220px, 320px"
-        className={className}
+        className={`${className} dark:hidden`}
+      />
+      <Image
+        src="/pokellection-logo-mark-dark.png"
+        alt=""
+        aria-hidden
+        {...logoProps}
+        priority={priority}
+        className={`${className} hidden dark:block`}
       />
     </Link>
   );
