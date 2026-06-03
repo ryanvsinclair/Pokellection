@@ -95,9 +95,11 @@ function incompletePaginationWarning(
   detail: string,
 ): string | undefined {
   if (totalCards == null || itemCount >= totalCards) return undefined;
+  const missing = totalCards - itemCount;
   return (
-    `${detail} Pulled ${itemCount} of ${totalCards} cards from Collectr. ` +
-    "Try preview again from this browser, or run sync from local dev if pagination keeps failing."
+    `${detail} Pulled ${itemCount} of ${totalCards} cards from Collectr (${missing} missing). ` +
+    "Open the showcase on app.getcollectr.com, scroll until all cards load, then retry preview here. " +
+    "If it still fails, try local dev — Collectr’s API often blocks server/datacenter IPs."
   );
 }
 

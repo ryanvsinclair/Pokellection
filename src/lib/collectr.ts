@@ -174,9 +174,10 @@ export function buildShowcaseUrl(
 ): string {
   const includeUnstacked =
     options.unstackedView ?? (collectionId ? false : true);
+  const includeOffset = !(options.omitOffset && offset === 0);
   const query = buildCollectrQuery({
     searchString: "",
-    offset,
+    ...(includeOffset ? { offset } : {}),
     limit: COLLECTR_PAGE_SIZE,
     id: collectionId ?? "",
     sortType: "",
@@ -196,21 +197,24 @@ export async function scrapeCollectrPortfolioFromHtmlUrl(
   profileUrl: string,
   apiMessage?: string,
 ): Promise<CollectrScrapeResult> {
-  const html = await fetchProfileHtml(profileUrl.trim());
-  const items = parseCollectrPortfolio(html);
+  const trimmedUrl = profileUrl.trim();
+  const target = parseCollectrShowcaseTarget(trimmedUrl);
+  const html = await fetchProfileHtml(trimmedUrl);
+  const totalCards = parseTotalCardsFromHtml(html);
+  let items = parseCollectrPortfolio(html);
   if (items.length === 0) {
     throw new Error(
       "No cards found in the showcase HTML. Check the URL is public and includes ?collection=… when needed.",
     );
   }
 
+  items = await supplementShowcaseViaApi(target, trimmedUrl, items, totalCards);
+
   return {
     items,
-    totalCards: parseTotalCardsFromHtml(html),
+    totalCards,
     source: "html",
-    warning: apiMessage
-      ? `${apiMessage} Fell back to server HTML scrape (${items.length} cards from embedded page data; may be first page only).`
-      : undefined,
+    warning: incompleteHtmlWarning(items.length, totalCards, apiMessage),
   };
 }
 
@@ -264,8 +268,10 @@ export function parseTotalCardsFromHtml(html: string): number | null {
 export type ShowcaseUrlOptions = {
   /** Main showcase uses true; sub-collections omit this (Collectr app query). */
   unstackedView?: boolean;
-  /** Retry variant — include empty JSON array filters param. */
+  /** Matches Collectr `getShowcaseProfile` dehydrated query (`filters: []`). */
   filters?: boolean;
+  /** First page in the Collectr app omits `offset` (only page 2+ sends it). */
+  omitOffset?: boolean;
 };
 
 export function showcaseApiUrlsForPage(
@@ -273,53 +279,94 @@ export function showcaseApiUrlsForPage(
   offset: number,
   collectionId: string | null,
 ): string[] {
-  const urls = new Set<string>();
-  urls.add(buildShowcaseUrl(profileId, offset, collectionId));
+  const urls: string[] = [];
   if (collectionId) {
-    urls.add(
+    if (offset === 0) {
+      urls.push(
+        buildShowcaseUrl(profileId, 0, collectionId, {
+          filters: true,
+          omitOffset: true,
+        }),
+      );
+    }
+    urls.push(
       buildShowcaseUrl(profileId, offset, collectionId, {
-        unstackedView: false,
         filters: true,
       }),
     );
-    urls.add(
+    urls.push(
       buildShowcaseUrl(profileId, offset, collectionId, {
-        unstackedView: true,
         filters: true,
+        unstackedView: true,
       }),
     );
   }
-  return [...urls];
+  if (offset === 0) {
+    urls.push(buildShowcaseUrl(profileId, 0, collectionId, { omitOffset: true }));
+  }
+  urls.push(buildShowcaseUrl(profileId, offset, collectionId));
+  return [...new Set(urls)];
 }
 
-export function parseCollectrPortfolio(html: string): CollectrPortfolioItem[] {
-  // [\s\S] instead of . with the /s flag keeps this compatible with the ES2017 build target.
+function parseEscapedJsonArrayAt(html: string, startIndex: number): CollectrRawItem[] | null {
+  const openBracket = html.indexOf("[", startIndex);
+  if (openBracket < 0) return null;
+
+  let depth = 0;
+  for (let i = openBracket; i < html.length; i += 1) {
+    const char = html[i];
+    if (char === "[") depth += 1;
+    else if (char === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const decoded = decodeEscapedJson(html.slice(openBracket, i + 1));
+          const parsed = JSON.parse(decoded) as unknown;
+          if (!Array.isArray(parsed)) return null;
+          return parsed.filter(
+            (row): row is CollectrRawItem =>
+              typeof row === "object" && row !== null && "product_id" in row,
+          );
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function extractRawProductsFromHtml(html: string): CollectrRawItem[] {
+  const rows: CollectrRawItem[] = [];
+
+  for (const match of html.matchAll(/\\"products\\":\[/g)) {
+    const fromArray = parseEscapedJsonArrayAt(html, match.index ?? 0);
+    if (fromArray) rows.push(...fromArray);
+  }
+
   const escapedMatches =
     html.match(/\{\\"product_id\\":\\"[\s\S]*?\\"is_card\\":(?:true|false)[\s\S]*?\}/g) ?? [];
-  const parsedItems: CollectrPortfolioItem[] = [];
-
   for (const escaped of escapedMatches) {
     try {
       const json = decodeEscapedJson(escaped);
-      const row = JSON.parse(json) as CollectrRawItem;
-      const item = mapRawProduct(row);
-      if (item) parsedItems.push(item);
+      rows.push(JSON.parse(json) as CollectrRawItem);
     } catch {
       // Skip malformed chunks and continue parsing others.
     }
   }
 
-  const deduped = new Map<string, CollectrPortfolioItem>();
-  for (const item of parsedItems) {
-    const key = collectrIdentity(item);
-    const existing = deduped.get(key);
-    if (existing) {
-      existing.quantity += item.quantity;
-    } else {
-      deduped.set(key, item);
-    }
-  }
-  return Array.from(deduped.values());
+  return rows;
+}
+
+export function parseCollectrPortfolio(html: string): CollectrPortfolioItem[] {
+  return mapShowcaseProducts(extractRawProductsFromHtml(html));
+}
+
+function collectrApiScopeLabel(target: CollectrShowcaseTarget, offset: number): string {
+  const scope = target.collectionId
+    ? `profile "${target.profileId}" collection ${target.collectionId}`
+    : `profile "${target.profileId}" (main)`;
+  return `${scope} at offset ${offset}`;
 }
 
 async function fetchShowcasePage(
@@ -327,18 +374,80 @@ async function fetchShowcasePage(
   offset: number,
   profileUrl: string,
 ): Promise<CollectrShowcasePage> {
-  const url = buildShowcaseUrl(target.profileId, offset, target.collectionId);
+  const urls = showcaseApiUrlsForPage(target.profileId, offset, target.collectionId);
+  let lastStatus = 0;
 
-  const response = await fetch(url, {
-    headers: collectrFetchHeaders(profileUrl, "application/json, text/plain, */*"),
-    cache: "no-store",
-  });
+  for (const url of urls) {
+    const response = await fetch(url, {
+      headers: collectrFetchHeaders(profileUrl, "application/json, text/plain, */*"),
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    throw new Error(`Collectr API request failed (${response.status})`);
+    if (response.ok) {
+      return (await response.json()) as CollectrShowcasePage;
+    }
+
+    lastStatus = response.status;
+    if (response.status !== 500) {
+      break;
+    }
   }
 
-  return (await response.json()) as CollectrShowcasePage;
+  throw new Error(
+    `Collectr API request failed (${lastStatus || 500}) for ${collectrApiScopeLabel(target, offset)}`,
+  );
+}
+
+function incompleteHtmlWarning(
+  itemCount: number,
+  totalCards: number | null,
+  apiMessage?: string,
+): string | undefined {
+  if (totalCards == null || itemCount >= totalCards) {
+    return apiMessage
+      ? `${apiMessage} Fell back to server HTML scrape (${itemCount} cards from embedded page data).`
+      : undefined;
+  }
+
+  const missing = totalCards - itemCount;
+  const parts = [
+    apiMessage,
+    `Fell back to server HTML scrape: ${itemCount} of ${totalCards} cards.`,
+    `${missing} card(s) are only on later Collectr API pages; the API returned errors from this environment.`,
+    "Open the same showcase on app.getcollectr.com (scroll to load all cards), then retry preview from that browser, or sync from local dev if the API works there.",
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+async function supplementShowcaseViaApi(
+  target: CollectrShowcaseTarget,
+  profileUrl: string,
+  existingItems: CollectrPortfolioItem[],
+  totalCards: number | null,
+): Promise<CollectrPortfolioItem[]> {
+  if (totalCards == null || existingItems.length >= totalCards) {
+    return existingItems;
+  }
+
+  const allProducts: CollectrRawItem[] = [];
+  let offset = existingItems.length;
+
+  while (offset < totalCards) {
+    try {
+      const page = await fetchShowcasePage(target, offset, profileUrl);
+      const products = page.products ?? [];
+      if (products.length === 0) break;
+      allProducts.push(...products);
+      offset += COLLECTR_PAGE_SIZE;
+      await sleep(PAGE_DELAY_MS);
+    } catch {
+      break;
+    }
+  }
+
+  if (allProducts.length === 0) return existingItems;
+  const extraItems = mapShowcaseProducts(allProducts);
+  return mergeCollectrPortfolioItems([...existingItems, ...extraItems]);
 }
 
 async function fetchAllShowcaseProductsViaApi(
@@ -369,7 +478,12 @@ async function fetchAllShowcaseProductsViaApi(
     throw new Error("No portfolio cards found in Collectr API response.");
   }
 
-  return { items, totalCards, source: "api" };
+  const warning =
+    totalCards != null && items.length < totalCards
+      ? `Pulled ${items.length} of ${totalCards} cards from the Collectr API (pagination stopped early).`
+      : undefined;
+
+  return { items, totalCards, source: "api", warning };
 }
 
 async function fetchProfileHtml(profileUrl: string): Promise<string> {

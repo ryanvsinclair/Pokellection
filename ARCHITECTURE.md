@@ -37,12 +37,14 @@ English. Acquisition qty bumps match **English** inventory only. Delist still sc
 `unstackedView=true` (main showcase uses it; Collectr app's `getShowcaseProfile` query does not).
 
 **Decision:** `buildShowcaseUrl` omits `unstackedView` when `id` (collection UUID) is set; retries
-alternate query shapes on 500. If the browser API still fails, `/api/admin/collectr/scrape-html`
-server-fetches the public showcase page (avoids CORS "Failed to fetch" on `app.getcollectr.com`).
+alternate query shapes on 500 (`filters=[]`, omit `offset` on page 1). If the browser API still fails,
+`/api/admin/collectr/scrape-html` server-fetches the public showcase page (avoids CORS on
+`app.getcollectr.com`). Server `fetchShowcasePage` uses the same URL variants as the browser client.
 - **Gotcha:** HTML embed is often **one page (~30 cards)** while `total_cards` can be higher (e.g. 33).
-  Local dev usually paginates via the browser API; production may hit page-2 failures and fall back
-  to partial HTML. `/api/admin/collectr/scrape-html` tries server API pagination first, then HTML.
-  Client keeps partial API results instead of replacing them with HTML when page 2 fails.
+  The extra cards exist only on API page 2+. When the API 500s from both browser and Vercel, sync gets
+  30/33 with a warning — not a parser bug. After HTML, we still attempt API supplement for remaining
+  offsets. Fix is usually: scroll-load the showcase on Collectr, retry preview from that browser, or
+  sync from local dev if the API works there.
 
 ---
 
