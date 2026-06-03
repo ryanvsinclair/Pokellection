@@ -5,10 +5,9 @@ import { useState } from "react";
 
 const PAGE_SIZE = 4;
 
-export interface CollectionGalleryImage {
-  src: string;
-  alt: string;
-}
+import type { CollectionGalleryImage } from "@/lib/collection-photos";
+
+export type { CollectionGalleryImage };
 
 interface Props {
   images: CollectionGalleryImage[];

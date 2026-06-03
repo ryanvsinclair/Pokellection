@@ -3,7 +3,10 @@ import { CollectionGrid } from "@/components/CollectionGrid";
 import { ShopBrowser } from "@/components/ShopBrowser";
 import { getAvailableCards } from "@/lib/queries/cards";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
-import { getAvailableCollections } from "@/lib/queries/collections";
+import {
+  getAvailableCollections,
+  getCollectionListingMeta,
+} from "@/lib/queries/collections";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -21,16 +24,11 @@ export default async function ShopPage() {
     user ? getCartQuantitiesByCardId(supabase, user.id) : Promise.resolve({}),
   ]);
 
-  const collectionCounts = await Promise.all(
-    collections.map(async (collection) => {
-      const { count } = await supabase
-        .from("collection_cards")
-        .select("card_id", { count: "exact", head: true })
-        .eq("collection_id", collection.id);
-      return { id: collection.id, count: count ?? 0 };
-    }),
+  const featuredCollections = collections.slice(0, 4);
+  const { cardCounts, previewImages } = await getCollectionListingMeta(
+    supabase,
+    featuredCollections.map((c) => c.id),
   );
-  const cardCounts = Object.fromEntries(collectionCounts.map((row) => [row.id, row.count]));
 
   return (
     <div className="space-y-10">
@@ -49,7 +47,11 @@ export default async function ShopPage() {
               View all
             </Link>
           </div>
-          <CollectionGrid collections={collections.slice(0, 4)} cardCounts={cardCounts} />
+          <CollectionGrid
+            collections={featuredCollections}
+            cardCounts={cardCounts}
+            previewImages={previewImages}
+          />
         </section>
       )}
 

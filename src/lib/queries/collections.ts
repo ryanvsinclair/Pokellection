@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildCollectionPreviewImages,
+  type CollectionPreviewImage,
+} from "@/lib/collection-photos";
 import { logSupabaseFetchError } from "@/lib/supabase/env";
 import type { Card, Collection, CollectionCard, Database } from "@/types/database";
 
@@ -10,6 +14,57 @@ export type CollectionWithCards = Collection & {
 
 function sortCollectionCards<T extends { sort_order: number }>(rows: T[]): T[] {
   return [...rows].sort((a, b) => a.sort_order - b.sort_order);
+}
+
+export type CollectionListingMeta = {
+  cardCounts: Record<string, number>;
+  previewImages: Record<string, CollectionPreviewImage[]>;
+};
+
+/** Card counts and up to four preview images per collection (batch). */
+export async function getCollectionListingMeta(
+  supabase: Client,
+  collectionIds: string[],
+): Promise<CollectionListingMeta> {
+  const cardCounts: Record<string, number> = {};
+  const previewImages: Record<string, CollectionPreviewImage[]> = {};
+
+  for (const id of collectionIds) {
+    cardCounts[id] = 0;
+    previewImages[id] = [];
+  }
+
+  if (collectionIds.length === 0) {
+    return { cardCounts, previewImages };
+  }
+
+  const { data: links, error } = await supabase
+    .from("collection_cards")
+    .select("collection_id, sort_order, cards(*)")
+    .in("collection_id", collectionIds)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    logSupabaseFetchError("getCollectionListingMeta", error);
+    return { cardCounts, previewImages };
+  }
+
+  const cardsByCollection = new Map<string, { sort_order: number; card: Card }[]>();
+  for (const row of links ?? []) {
+    const card = row.cards as Card;
+    const list = cardsByCollection.get(row.collection_id) ?? [];
+    list.push({ sort_order: row.sort_order, card });
+    cardsByCollection.set(row.collection_id, list);
+  }
+
+  for (const id of collectionIds) {
+    const cards = sortCollectionCards(cardsByCollection.get(id) ?? []).map((row) => row.card);
+
+    cardCounts[id] = cards.length;
+    previewImages[id] = buildCollectionPreviewImages(cards);
+  }
+
+  return { cardCounts, previewImages };
 }
 
 /** All published collections, newest first. */
