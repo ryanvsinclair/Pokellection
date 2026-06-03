@@ -15,7 +15,10 @@ export default async function BuyerSignupPage({
     <div className="mx-auto max-w-md space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Create account</h1>
-        <p className="mt-1 text-sm text-muted">Save your cart and track orders & shipping.</p>
+        <p className="mt-1 text-sm text-muted">
+          An account is required to reserve cards, use your cart, and check out (pickup, delivery,
+          or shipping).
+        </p>
       </div>
 
       <form action={signUpBuyer} className="space-y-4 rounded-xl border border-border bg-card p-5">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CardGrid } from "@/components/CardGrid";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { getJustSoldCards, getLatestArrivals, LATEST_ARRIVAL_TIERS } from "@/lib/queries/cards";
+import { canPurchaseAsBuyer } from "@/lib/auth-roles";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
@@ -17,6 +18,7 @@ export default async function HomePage() {
   const justSoldForHome = justSoldCards.filter((c) => !availableIds.has(c.id));
   const homeGridCards = [...justSoldForHome, ...cards];
 
+  const canPurchase = await canPurchaseAsBuyer(supabase, user?.id);
   const cartQtyByCardId = user
     ? await getCartQuantitiesByCardId(supabase, user.id)
     : {};
@@ -64,6 +66,7 @@ export default async function HomePage() {
         <CardGrid
           cards={homeGridCards}
           cartQtyByCardId={cartQtyByCardId}
+          canPurchase={canPurchase}
           emptyMessage="No new listings in these price ranges right now."
         />
       </section>

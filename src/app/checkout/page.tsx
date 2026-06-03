@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/CheckoutForm";
 import { removeFromCart, updateCartQuantity } from "@/app/cart/actions";
 import { getCheckoutOptionAvailability } from "@/lib/checkout-options";
+import { getUserProfileRole, isBuyer } from "@/lib/auth-roles";
+import { buyerSignupPath } from "@/lib/buyer-auth-paths";
 import { createClient } from "@/lib/supabase/server";
 import { collectionSinglePriceCad } from "@/lib/collection-pricing";
 import { formatCad } from "@/lib/utils";
@@ -13,6 +15,7 @@ const CHECKOUT_ERRORS: Record<string, string> = {
   max_quantity: "Quantity was limited to what we have in stock.",
   invalid_option: "Please choose a valid fulfillment option.",
   missing_delivery_area: "Please select a delivery area.",
+  missing_pickup_area: "Please select a pickup area.",
   missing_address: "A full address is required for this option.",
   option_unavailable: "That fulfillment option is not available right now.",
   next_day_pickup_closed:
@@ -59,7 +62,12 @@ export default async function CheckoutPage({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/account/login?redirect=/checkout");
+    redirect(buyerSignupPath("/checkout"));
+  }
+
+  const role = await getUserProfileRole(supabase, user.id);
+  if (!isBuyer(role)) {
+    redirect("/account");
   }
 
   const [{ data: cartRows }, { data: profile }] = await Promise.all([
@@ -147,7 +155,9 @@ export default async function CheckoutPage({
       <div>
         <h1 className="text-2xl font-bold">Cart & checkout</h1>
         <p className="mt-1 text-sm text-muted">
-          Ottawa pickup and delivery, or shipping anywhere in Canada. Pay by e-transfer after
+          Ottawa pickup and delivery, or shipping anywhere in Canada. Pickup is paid on arrival;
+          next-day delivery requires a $5 non-refundable deposit; shipping is paid in full after
+          checkout.
           placing your order.
         </p>
       </div>

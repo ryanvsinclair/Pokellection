@@ -8,7 +8,12 @@ export default async function AdminReservationsPage() {
     .order("reserved_at", { ascending: false });
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <div className="space-y-4">
+      <p className="text-sm text-muted">
+        Same-day pickup holds from buyers on the shop reserve flow. These are separate from
+        cards marked reserved because they are in a published collection bundle.
+      </p>
+      <div className="overflow-x-auto rounded-xl border border-border">
       <table className="min-w-full text-sm">
         <thead className="bg-surface text-left text-muted">
           <tr>
@@ -37,6 +42,7 @@ export default async function AdminReservationsPage() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

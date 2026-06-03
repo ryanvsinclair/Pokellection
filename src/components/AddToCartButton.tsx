@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { addToCartAction, type AddToCartResult } from "@/app/cart/actions";
+import { buyerSignupPath } from "@/lib/buyer-auth-paths";
 import { useCartCount } from "@/components/CartCountProvider";
 import { canIncreaseCartQuantity } from "@/lib/cart-inventory";
 
@@ -12,6 +13,8 @@ interface Props {
   stockQuantity: number;
   cartQuantity?: number;
   variant?: "default" | "icon";
+  /** When false, show sign-up instead of add-to-cart (guest browsing). */
+  canPurchase?: boolean;
 }
 
 const initialState: AddToCartResult | null = null;
@@ -21,8 +24,10 @@ export function AddToCartButton({
   stockQuantity,
   cartQuantity = 0,
   variant = "default",
+  canPurchase = true,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const { setCount } = useCartCount();
   const [state, formAction] = useActionState(addToCartAction, initialState);
   const [added, setAdded] = useState(false);
@@ -39,7 +44,7 @@ export function AddToCartButton({
 
     if (!state.ok) {
       if (state.error === "auth") {
-        router.push(`/account/signup?redirect=${encodeURIComponent("/checkout")}`);
+        router.push(buyerSignupPath(pathname || "/checkout"));
       }
       if (state.error === "max_quantity" && state.inCartQuantity !== undefined) {
         setInCart(state.inCartQuantity);
@@ -59,6 +64,30 @@ export function AddToCartButton({
     stockQuantity === 1
       ? "Only 1 copy available — already in your cart"
       : `All ${stockQuantity} copies are in your cart`;
+
+  if (!canPurchase) {
+    const signupHref = buyerSignupPath(pathname || `/shop`);
+    if (variant === "icon") {
+      return (
+        <a
+          href={signupHref}
+          aria-label="Sign up to purchase"
+          title="Sign up to purchase"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/40 text-primary transition hover:bg-primary/10"
+        >
+          <PlusIcon />
+        </a>
+      );
+    }
+    return (
+      <a
+        href={signupHref}
+        className="inline-flex items-center justify-center rounded-lg border border-primary bg-primary/5 px-5 py-3 text-sm font-semibold text-primary"
+      >
+        Sign up to purchase
+      </a>
+    );
+  }
 
   return (
     <form action={formAction}>

@@ -6,14 +6,15 @@ import { useCartCount } from "@/components/CartCountProvider";
 interface Props {
   className?: string;
   showLabel?: boolean;
+  href?: string;
 }
 
-export function CartNavLink({ className, showLabel = true }: Props) {
+export function CartNavLink({ className, showLabel = true, href = "/checkout" }: Props) {
   const { count } = useCartCount();
 
   return (
     <Link
-      href="/checkout"
+      href={href}
       className={`relative inline-flex items-center gap-1.5 ${className ?? ""}`}
     >
       <span className="relative inline-flex">

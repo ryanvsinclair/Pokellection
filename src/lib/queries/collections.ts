@@ -186,6 +186,30 @@ export async function getPublishedCollectionSlugForCard(
   return collection?.slug ?? null;
 }
 
+/** Published collection title(s) per member card (for admin status labels). */
+export async function getPublishedCollectionTitlesByCardId(
+  supabase: Client,
+): Promise<Map<string, string[]>> {
+  const { data: links, error } = await supabase
+    .from("collection_cards")
+    .select("card_id, collections!inner(title, status)")
+    .eq("collections.status", "available");
+
+  if (error) {
+    logSupabaseFetchError("getPublishedCollectionTitlesByCardId", error);
+    return new Map();
+  }
+
+  const map = new Map<string, string[]>();
+  for (const row of links ?? []) {
+    const collection = row.collections as { title: string; status: string };
+    const titles = map.get(row.card_id) ?? [];
+    titles.push(collection.title);
+    map.set(row.card_id, titles);
+  }
+  return map;
+}
+
 /** Card ids in published (available) collections — hidden from singles shop/search. */
 export async function getCardIdsInPublishedCollections(supabase: Client): Promise<Set<string>> {
   const { data: collections } = await supabase

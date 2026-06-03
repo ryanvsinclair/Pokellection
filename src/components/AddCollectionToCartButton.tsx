@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -8,16 +8,27 @@ import {
   type AddCollectionToCartResult,
 } from "@/app/cart/actions";
 import { useCartCount } from "@/components/CartCountProvider";
+import { SignUpToBuy } from "@/components/SignUpToBuy";
+import { buyerSignupPath } from "@/lib/buyer-auth-paths";
 
 interface Props {
   collectionId: string;
   singlesInCart?: boolean;
+  canPurchase?: boolean;
+  returnPath?: string;
 }
 
 const initialState: AddCollectionToCartResult | null = null;
 
-export function AddCollectionToCartButton({ collectionId, singlesInCart = false }: Props) {
+export function AddCollectionToCartButton({
+  collectionId,
+  singlesInCart = false,
+  canPurchase = true,
+  returnPath,
+}: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const signupReturn = returnPath ?? pathname ?? "/checkout";
   const { setCount } = useCartCount();
   const [state, formAction] = useActionState(addCollectionToCartAction, initialState);
   const [added, setAdded] = useState(false);
@@ -27,7 +38,7 @@ export function AddCollectionToCartButton({ collectionId, singlesInCart = false 
 
     if (!state.ok) {
       if (state.error === "auth") {
-        router.push(`/account/signup?redirect=${encodeURIComponent("/checkout")}`);
+        router.push(buyerSignupPath(signupReturn));
       }
       return;
     }
@@ -38,6 +49,10 @@ export function AddCollectionToCartButton({ collectionId, singlesInCart = false 
     const timer = window.setTimeout(() => setAdded(false), 2000);
     return () => window.clearTimeout(timer);
   }, [state, setCount, router]);
+
+  if (!canPurchase) {
+    return <SignUpToBuy returnPath={signupReturn} />;
+  }
 
   return (
     <form action={formAction}>

@@ -8,6 +8,66 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Collectr roles, acquisition import, language showcases
+
+**Context:** Multiple Collectr URLs serve different jobs (main sync, temp purchases,
+French, JP/KR). Temp holding is merged into main in the Collectr app after website import.
+
+**Decision:** Full product spec in `docs/COLLECTR_INVENTORY_SPEC.md`. Implemented: migration
+`018` + four `site_settings` URL columns; `/admin/import` (links → acquisition → sync → CSV);
+`POST /api/admin/collectr/acquisition/preview|apply`; `/admin/acquisitions` P&L;
+`collectr-settings.ts` / `collectr-card-import.ts`. **Gotcha:** `showcaseProfileIds` for
+sync/delist must come from `syncPortfolioConfigs` only — never include new-purchases profile.
+Acquisition apply **adds** quantity; showcase sync **sets** quantity from Collectr.
+
+---
+
+## Buyer account required to purchase
+
+**Context:** Cart, checkout, reservations, and fulfillment require a known buyer.
+
+**Decision:** Guests may browse shop/collections; `canPurchaseAsBuyer` gates add-to-cart UI.
+Middleware enforces signed-in **buyer** on `/checkout` and `/reserve/*` (redirect to
+`/account/signup`). Reservations RLS requires `auth.uid()` (`017`). Cart/order inserts
+already require `buyer_id = auth.uid()`.
+
+---
+
+## Next-day delivery deposit
+
+**Context:** Delivery bookings need a non-refundable $5 hold; balance is collected on delivery.
+Cancel/no-show keeps the deposit.
+
+**Decision:** `orders.deposit_cad` / `balance_due_cad` (migration `016`); status
+`deposit_received` after $5 e-transfer. Buyer UI shows deposit vs balance; admin marks
+deposit then full payment. Ship orders still prepay full total.
+
+---
+
+## Pickup orders: pay on arrival
+
+**Context:** Store pickup (next-day / same-day) should not require e-transfer before the
+buyer arrives; ship and home delivery still prepay.
+
+**Decision:** `placeOrder` sets `payment_method: cash_on_pickup` for
+`next_day_pickup` and `same_day_pickup`; `etransfer` for ship/delivery. Same
+`awaiting_transfer` status, but buyer UI shows “Pay when you pick up”; admin
+“Awaiting e-transfer” counts only `payment_method = etransfer`.
+
+---
+
+## Admin card status vs checkout Ottawa areas
+
+**Context:** Published bundles set member cards to `reserved`, same DB status as
+same-day pickup holds — admin “Reserved cards” was misleading.
+
+**Decision:** Admin uses `CardAdminStatusCell`: “In collection” (published bundle),
+“Pickup hold” (pending `reservations`), or base statuses. Dashboard splits counts.
+`PICKUP_AREAS` (Findlay Creek, Orleans, South Keys, Blair) applies only to
+next-day pickup (`pickup_area` on order). `DELIVERY_AREAS` unchanged for next-day delivery.
+
+---
+
 ## Collection preview images + RLS
 
 **Context:** Published bundles set member cards to `reserved`. Public `cards` RLS

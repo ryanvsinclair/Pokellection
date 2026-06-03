@@ -9,12 +9,14 @@ interface CardGridProps {
   cards: Card[];
   cartQtyByCardId?: Record<string, number>;
   emptyMessage?: string;
+  canPurchase?: boolean;
 }
 
 export function CardGrid({
   cards,
   cartQtyByCardId = {},
   emptyMessage = "No cards available right now.",
+  canPurchase = true,
 }: CardGridProps) {
   if (cards.length === 0) {
     return (
@@ -111,6 +113,7 @@ export function CardGrid({
                     stockQuantity={card.quantity}
                     cartQuantity={cartQtyByCardId[card.id] ?? 0}
                     variant="icon"
+                    canPurchase={canPurchase}
                   />
                 )}
               </div>

@@ -18,6 +18,7 @@ interface Props {
   cards: Card[];
   justSoldCards?: Card[];
   cartQtyByCardId?: Record<string, number>;
+  canPurchase?: boolean;
 }
 
 const SORT_OPTIONS: { value: ShopSort; label: string }[] = [
@@ -34,7 +35,12 @@ const selectClassName =
 
 const labelClassName = "text-xs font-semibold uppercase tracking-wide text-muted";
 
-export function ShopBrowser({ cards, justSoldCards = [], cartQtyByCardId = {} }: Props) {
+export function ShopBrowser({
+  cards,
+  justSoldCards = [],
+  cartQtyByCardId = {},
+  canPurchase = true,
+}: Props) {
   const [filters, setFilters] = useState<ShopFilters>(DEFAULT_SHOP_FILTERS);
   const [sort, setSort] = useState<ShopSort>(DEFAULT_SHOP_SORT);
 
@@ -168,6 +174,7 @@ export function ShopBrowser({ cards, justSoldCards = [], cartQtyByCardId = {} }:
       <CardGrid
         cards={visibleCards}
         cartQtyByCardId={cartQtyByCardId}
+        canPurchase={canPurchase}
         emptyMessage={
           hasActiveFilters
             ? "No cards match your search or filters."

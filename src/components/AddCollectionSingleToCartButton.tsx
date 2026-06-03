@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -8,12 +8,16 @@ import {
   type AddCollectionSingleToCartResult,
 } from "@/app/cart/actions";
 import { useCartCount } from "@/components/CartCountProvider";
+import { SignUpToBuy } from "@/components/SignUpToBuy";
+import { buyerSignupPath } from "@/lib/buyer-auth-paths";
 
 interface Props {
   cardId: string;
   collectionId: string;
   cartQuantity?: number;
   bundleInCart?: boolean;
+  canPurchase?: boolean;
+  returnPath?: string;
 }
 
 const initialState: AddCollectionSingleToCartResult | null = null;
@@ -23,8 +27,12 @@ export function AddCollectionSingleToCartButton({
   collectionId,
   cartQuantity = 0,
   bundleInCart = false,
+  canPurchase = true,
+  returnPath,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const signupReturn = returnPath ?? pathname ?? "/checkout";
   const { setCount } = useCartCount();
   const [state, formAction] = useActionState(addCollectionSingleToCartAction, initialState);
   const [added, setAdded] = useState(false);
@@ -36,7 +44,7 @@ export function AddCollectionSingleToCartButton({
 
     if (!state.ok) {
       if (state.error === "auth") {
-        router.push(`/account/signup?redirect=${encodeURIComponent("/checkout")}`);
+        router.push(buyerSignupPath(signupReturn));
       }
       return;
     }
@@ -46,13 +54,17 @@ export function AddCollectionSingleToCartButton({
     router.refresh();
     const timer = window.setTimeout(() => setAdded(false), 2000);
     return () => window.clearTimeout(timer);
-  }, [state, setCount, router]);
+  }, [state, setCount, router, signupReturn]);
 
   const title = bundleInCart
     ? "Remove the full collection from your cart to buy singles"
     : inCart
       ? "This card is already in your cart"
       : undefined;
+
+  if (!canPurchase) {
+    return <SignUpToBuy returnPath={signupReturn} variant="link" />;
+  }
 
   return (
     <form action={formAction}>

@@ -1,84 +1,69 @@
-"use client";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { ReservePickupForm } from "@/app/reserve/[id]/ReservePickupForm";
+import { getUserProfileRole, isBuyer } from "@/lib/auth-roles";
+import { buyerSignupPath } from "@/lib/buyer-auth-paths";
+import { createClient } from "@/lib/supabase/server";
 
-import { FormEvent, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+interface Props {
+  params: Promise<{ id: string }>;
+}
 
-export default function ReservePage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default async function ReservePage({ params }: Props) {
+  const { id } = await params;
+  const supabase = await createClient();
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const form = new FormData(e.currentTarget);
-    const supabase = createClient();
-
-    const expiresAt = new Date();
-    expiresAt.setHours(23, 59, 59, 999);
-
-    const { error: reservationError } = await supabase.from("reservations").insert({
-      card_id: id,
-      buyer_name: String(form.get("buyer_name")),
-      buyer_email: String(form.get("buyer_email")),
-      buyer_phone: String(form.get("buyer_phone")),
-      status: "pending",
-      reserved_at: new Date().toISOString(),
-      expires_at: expiresAt.toISOString(),
-      notes: String(form.get("notes") || "") || null,
-    });
-
-    if (reservationError) {
-      setError(reservationError.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push("/shop");
-    router.refresh();
+  if (!user) {
+    redirect(buyerSignupPath(`/reserve/${id}`));
   }
+
+  const role = await getUserProfileRole(supabase, user.id);
+  if (!isBuyer(role)) {
+    redirect("/account");
+  }
+
+  const { data: card } = await supabase
+    .from("cards")
+    .select("id, title, status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!card || card.status !== "available") {
+    notFound();
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, phone")
+    .eq("id", user.id)
+    .single();
 
   return (
     <div className="mx-auto max-w-md space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Reserve for pickup</h1>
         <p className="mt-1 text-sm text-muted">
-          Same-day pickup in Ottawa. Your card is held until end of day.
+          Same-day pickup in Ottawa for <span className="font-medium text-foreground">{card.title}</span>.
+          Your card is held until end of day.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-5">
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">Name</span>
-          <input name="buyer_name" required className="w-full rounded-lg border border-border px-3 py-2" />
-        </label>
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">Email</span>
-          <input name="buyer_email" type="email" required className="w-full rounded-lg border border-border px-3 py-2" />
-        </label>
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">Phone</span>
-          <input name="buyer_phone" type="tel" required className="w-full rounded-lg border border-border px-3 py-2" />
-        </label>
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">Notes (optional)</span>
-          <textarea name="notes" rows={2} className="w-full rounded-lg border border-border px-3 py-2" />
-        </label>
+      <ReservePickupForm
+        cardId={card.id}
+        defaultName={profile?.display_name ?? ""}
+        defaultEmail={user.email ?? ""}
+        defaultPhone={profile?.phone ?? ""}
+      />
 
-        {error && <p className="text-sm text-primary">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {loading ? "Reserving…" : "Reserve card"}
-        </button>
-      </form>
+      <p className="text-center text-sm text-muted">
+        <Link href={`/shop`} className="text-primary hover:underline">
+          Back to shop
+        </Link>
+      </p>
     </div>
   );
 }

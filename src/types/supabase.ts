@@ -259,11 +259,13 @@ export type Database = {
       }
       orders: {
         Row: {
+          balance_due_cad: number | null
           buyer_email: string
           buyer_id: string | null
           buyer_name: string
           buyer_phone: string
           created_at: string
+          deposit_cad: number
           etransfer_reference: string | null
           fulfillment_option: string | null
           fulfillment_status: Database["public"]["Enums"]["fulfillment_status"]
@@ -281,11 +283,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          balance_due_cad?: number | null
           buyer_email: string
           buyer_id?: string | null
           buyer_name: string
           buyer_phone: string
           created_at?: string
+          deposit_cad?: number
           etransfer_reference?: string | null
           fulfillment_option?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
@@ -305,11 +309,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          balance_due_cad?: number | null
           buyer_email?: string
           buyer_id?: string | null
           buyer_name?: string
           buyer_phone?: string
           created_at?: string
+          deposit_cad?: number
           etransfer_reference?: string | null
           fulfillment_option?: string | null
           fulfillment_status?: Database["public"]["Enums"]["fulfillment_status"]
@@ -445,8 +451,78 @@ export type Database = {
           },
         ]
       }
+      acquisition_cards: {
+        Row: {
+          acquisition_id: string
+          card_id: string
+          quantity_added: number
+        }
+        Insert: {
+          acquisition_id: string
+          card_id: string
+          quantity_added: number
+        }
+        Update: {
+          acquisition_id?: string
+          card_id?: string
+          quantity_added?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_cards_acquisition_id_fkey"
+            columns: ["acquisition_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_acquisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_cards_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_acquisitions: {
+        Row: {
+          card_count: number
+          collectr_showcase_url: string | null
+          created_at: string
+          id: string
+          label: string | null
+          note: string | null
+          purchase_price_cad: number
+          purchased_at: string
+        }
+        Insert: {
+          card_count?: number
+          collectr_showcase_url?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          note?: string | null
+          purchase_price_cad: number
+          purchased_at?: string
+        }
+        Update: {
+          card_count?: number
+          collectr_showcase_url?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          note?: string | null
+          purchase_price_cad?: number
+          purchased_at?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
+          collectr_french_url: string
+          collectr_japanese_korean_url: string
+          collectr_main_url: string
+          collectr_new_purchases_url: string
           collectr_portfolios: Json
           contact_email: string
           etransfer_email: string
@@ -459,6 +535,10 @@ export type Database = {
           untracked_shipping_fee_cad: number
         }
         Insert: {
+          collectr_french_url?: string
+          collectr_japanese_korean_url?: string
+          collectr_main_url?: string
+          collectr_new_purchases_url?: string
           collectr_portfolios?: Json
           contact_email?: string
           etransfer_email?: string
@@ -471,6 +551,10 @@ export type Database = {
           untracked_shipping_fee_cad?: number
         }
         Update: {
+          collectr_french_url?: string
+          collectr_japanese_korean_url?: string
+          collectr_main_url?: string
+          collectr_new_purchases_url?: string
           collectr_portfolios?: Json
           contact_email?: string
           etransfer_email?: string
@@ -503,7 +587,11 @@ export type Database = {
         | "cancelled"
       fulfillment_type: "pickup" | "ship"
       payment_method: "etransfer" | "cash_on_pickup"
-      payment_status: "awaiting_transfer" | "received" | "refunded"
+      payment_status:
+        | "awaiting_transfer"
+        | "deposit_received"
+        | "received"
+        | "refunded"
       reservation_status:
         | "pending"
         | "confirmed"
@@ -651,7 +739,12 @@ export const Constants = {
       ],
       fulfillment_type: ["pickup", "ship"],
       payment_method: ["etransfer", "cash_on_pickup"],
-      payment_status: ["awaiting_transfer", "received", "refunded"],
+      payment_status: [
+        "awaiting_transfer",
+        "deposit_received",
+        "received",
+        "refunded",
+      ],
       reservation_status: [
         "pending",
         "confirmed",

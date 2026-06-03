@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AddCollectionSingleToCartButton } from "@/components/AddCollectionSingleToCartButton";
+import { SignUpToBuy } from "@/components/SignUpToBuy";
 import { CollectionDetailGallery } from "@/components/CollectionDetailGallery";
 import {
   COLLECTION_SINGLE_SURCHARGE_CAD,
@@ -16,6 +17,8 @@ interface Props {
   cards: Card[];
   cartQtyByCardId: Record<string, number>;
   bundleInCart: boolean;
+  canPurchase?: boolean;
+  returnPath?: string;
 }
 
 export function CollectionMemberList({
@@ -24,6 +27,8 @@ export function CollectionMemberList({
   cards,
   cartQtyByCardId,
   bundleInCart,
+  canPurchase = true,
+  returnPath = "/checkout",
 }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -85,12 +90,18 @@ export function CollectionMemberList({
                     collection fee
                   </p>
                 </div>
-                <AddCollectionSingleToCartButton
-                  cardId={card.id}
-                  collectionId={collectionId}
-                  cartQuantity={cartQtyByCardId[card.id] ?? 0}
-                  bundleInCart={bundleInCart}
-                />
+                {canPurchase ? (
+                  <AddCollectionSingleToCartButton
+                    cardId={card.id}
+                    collectionId={collectionId}
+                    cartQuantity={cartQtyByCardId[card.id] ?? 0}
+                    bundleInCart={bundleInCart}
+                    canPurchase
+                    returnPath={returnPath}
+                  />
+                ) : (
+                  <SignUpToBuy returnPath={returnPath} variant="link" />
+                )}
               </div>
             </article>
           </li>

@@ -4,7 +4,8 @@ import { CartNavLink } from "@/components/CartNavLink";
 import { MobileNavMenu, type NavLinkItem } from "@/components/MobileNavMenu";
 import { SiteLogo } from "@/components/SiteLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { getUserProfileRole, isManager } from "@/lib/auth-roles";
+import { buyerSignupPath } from "@/lib/buyer-auth-paths";
+import { getUserProfileRole, isBuyer, isManager } from "@/lib/auth-roles";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/database";
 
@@ -35,6 +36,8 @@ export async function Header() {
 
   const role = user ? await getUserProfileRole(supabase, user.id) : null;
   const navLinks = buildNavLinks(user, role);
+  const canPurchase = user ? isBuyer(role) : false;
+  const cartHref = canPurchase ? "/checkout" : buyerSignupPath("/checkout");
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
@@ -51,7 +54,7 @@ export async function Header() {
                 {link.label}
               </Link>
             ))}
-            <CartNavLink />
+            <CartNavLink href={cartHref} />
           </nav>
           {!user && <AuthNavLink />}
           <ThemeToggle />

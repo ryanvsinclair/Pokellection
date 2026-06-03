@@ -30,3 +30,5 @@ export type CartItem = Tables<"cart_items">;
 export type Order = Tables<"orders">;
 export type OrderItem = Tables<"order_items">;
 export type PrivateSale = Tables<"private_sales">;
+export type InventoryAcquisition = Tables<"inventory_acquisitions">;
+export type AcquisitionCard = Tables<"acquisition_cards">;

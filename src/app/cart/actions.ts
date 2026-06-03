@@ -8,11 +8,14 @@ import {
   isFulfillmentOption,
   validateCheckoutSelection,
 } from "@/lib/checkout-options";
+import { buildOrderPaymentAmounts, orderPaymentMethodForFulfillment } from "@/lib/order-payment";
 import { markCardSoldUpdate } from "@/lib/card-sold";
 import { collectionSinglePriceCad } from "@/lib/collection-pricing";
 import { detachCardFromPublishedCollection } from "@/lib/collection-fulfillment";
 import { getCartItemCount } from "@/lib/queries/cart";
 import { generateOrderNumber } from "@/lib/tracking";
+import { getUserProfileRole, isBuyer } from "@/lib/auth-roles";
+import { buyerSignupPath } from "@/lib/buyer-auth-paths";
 import { createClient } from "@/lib/supabase/server";
 
 export type AddToCartResult =
@@ -320,12 +323,19 @@ export async function removeFromCart(formData: FormData) {
   revalidateCartSurfaces();
 }
 
-export async function placeOrder(formData: FormData) {
-  const supabase = await createClient();
+async function requireBuyerUser(supabase: Awaited<ReturnType<typeof createClient>>, returnPath: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/account/login?redirect=/checkout");
+  if (!user) redirect(buyerSignupPath(returnPath));
+  const role = await getUserProfileRole(supabase, user.id);
+  if (!isBuyer(role)) redirect("/account");
+  return user;
+}
+
+export async function placeOrder(formData: FormData) {
+  const supabase = await createClient();
+  const user = await requireBuyerUser(supabase, "/checkout");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -345,10 +355,11 @@ export async function placeOrder(formData: FormData) {
   const province = String(formData.get("province") ?? "ON");
   const postalCode = String(formData.get("postal_code") ?? "");
   const deliveryArea = String(formData.get("delivery_area") ?? "") || null;
+  const pickupArea = String(formData.get("pickup_area") ?? "") || null;
 
   const checkoutValidation = validateCheckoutSelection(
     fulfillmentOptionRaw,
-    deliveryArea,
+    { deliveryAreaId: deliveryArea, pickupAreaId: pickupArea },
     { street, city, province, postalCode },
   );
   if (!checkoutValidation.ok) {
@@ -497,6 +508,10 @@ export async function placeOrder(formData: FormData) {
     collectionSingleLineItems.reduce((sum, item) => sum + item.unitPrice, 0) +
     collectionLineItems.reduce((sum, item) => sum + Number(item.collection.price_cad), 0);
   const total = subtotal + shippingFee;
+  const { deposit_cad, balance_due_cad } = buildOrderPaymentAmounts(
+    fulfillmentOptionRaw,
+    total,
+  );
   const orderNumber = generateOrderNumber();
 
   const shippingAddress =
@@ -510,7 +525,9 @@ export async function placeOrder(formData: FormData) {
             ? { delivery_area: deliveryArea }
             : {}),
         }
-      : null;
+      : fulfillmentOptionRaw === "next_day_pickup" && pickupArea
+        ? { pickup_area: pickupArea }
+        : null;
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -526,8 +543,10 @@ export async function placeOrder(formData: FormData) {
       shipping_fee_cad: shippingFee,
       subtotal_cad: subtotal,
       total_cad: total,
+      deposit_cad,
+      balance_due_cad,
       shipping_address: shippingAddress,
-      payment_method: "etransfer",
+      payment_method: orderPaymentMethodForFulfillment(fulfillmentOptionRaw),
       payment_status: "awaiting_transfer",
       fulfillment_status: "pending",
     })

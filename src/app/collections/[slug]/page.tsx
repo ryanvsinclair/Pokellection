@@ -4,6 +4,8 @@ import { AddCollectionToCartButton } from "@/components/AddCollectionToCartButto
 import { CollectionMemberList } from "@/components/CollectionMemberList";
 import { getAvailableCollectionBySlug } from "@/lib/queries/collections";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
+import { SignUpToBuy } from "@/components/SignUpToBuy";
+import { canPurchaseAsBuyer } from "@/lib/auth-roles";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad } from "@/lib/utils";
 import { COLLECTION_SINGLE_SURCHARGE_CAD } from "@/lib/collection-pricing";
@@ -43,6 +45,9 @@ export default async function CollectionDetailPage({ params }: Props) {
     ? await getCartQuantitiesByCardId(supabase, user.id)
     : {};
 
+  const canPurchase = await canPurchaseAsBuyer(supabase, user?.id);
+  const purchaseReturn = `/collections/${slug}`;
+
   let bundleInCart = false;
   let singlesInCart = false;
   if (user) {
@@ -76,17 +81,25 @@ export default async function CollectionDetailPage({ params }: Props) {
         {collection.description && (
           <p className="max-w-2xl text-sm leading-relaxed text-muted">{collection.description}</p>
         )}
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <AddCollectionToCartButton
-            collectionId={collection.id}
-            singlesInCart={singlesInCart}
-          />
-          <Link
-            href="/checkout"
-            className="rounded-lg bg-foreground px-5 py-3 text-center text-sm font-semibold text-background"
-          >
-            Go to checkout
-          </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          {canPurchase ? (
+            <>
+              <AddCollectionToCartButton
+                collectionId={collection.id}
+                singlesInCart={singlesInCart}
+                canPurchase
+                returnPath={purchaseReturn}
+              />
+              <Link
+                href="/checkout"
+                className="rounded-lg bg-foreground px-5 py-3 text-center text-sm font-semibold text-background"
+              >
+                Go to checkout
+              </Link>
+            </>
+          ) : (
+            <SignUpToBuy returnPath={purchaseReturn} />
+          )}
         </div>
       </div>
 
@@ -96,6 +109,8 @@ export default async function CollectionDetailPage({ params }: Props) {
         cards={cards}
         cartQtyByCardId={cartQtyByCardId}
         bundleInCart={bundleInCart}
+        canPurchase={canPurchase}
+        returnPath={purchaseReturn}
       />
     </div>
   );

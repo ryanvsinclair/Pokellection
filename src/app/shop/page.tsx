@@ -7,6 +7,7 @@ import {
   getAvailableCollections,
   getCollectionListingMeta,
 } from "@/lib/queries/collections";
+import { canPurchaseAsBuyer } from "@/lib/auth-roles";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -25,6 +26,8 @@ export default async function ShopPage() {
     user ? getCartQuantitiesByCardId(supabase, user.id) : Promise.resolve({}),
   ]);
 
+  const canPurchase = await canPurchaseAsBuyer(supabase, user?.id);
+
   const featuredCollections = collections.slice(0, 4);
   const { cardCounts, previewImages } = await getCollectionListingMeta(
     supabase,
@@ -37,6 +40,15 @@ export default async function ShopPage() {
         <h1 className="text-2xl font-bold">Shop</h1>
         <p className="mt-1 text-sm text-muted">
           Singles and curated collections — pickup in Ottawa or ship anywhere in Canada.
+          {!canPurchase && (
+            <>
+              {" "}
+              <Link href="/account/signup" className="font-medium text-primary hover:underline">
+                Sign up
+              </Link>{" "}
+              to reserve, add to cart, or check out.
+            </>
+          )}
         </p>
       </div>
 
@@ -62,6 +74,7 @@ export default async function ShopPage() {
           cards={cards}
           justSoldCards={justSoldCards}
           cartQtyByCardId={cartQtyByCardId}
+          canPurchase={canPurchase}
         />
       </section>
     </div>

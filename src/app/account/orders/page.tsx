@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getOrdersForBuyer } from "@/lib/queries/orders";
 import { createClient } from "@/lib/supabase/server";
 import { SupportContact } from "@/components/SupportContact";
+import { formatPaymentStatusLabel } from "@/lib/order-payment";
 import { formatCad } from "@/lib/utils";
 
 export default async function OrdersPage() {
@@ -34,7 +35,8 @@ export default async function OrdersPage() {
                 <p className="text-sm font-medium">{formatCad(order.total_cad)}</p>
               </div>
               <p className="mt-1 text-sm capitalize text-muted">
-                {order.payment_status.replace("_", " ")} · {order.fulfillment_status.replace("_", " ")}
+                {formatPaymentStatusLabel(order.payment_status, order.payment_method, order)} ·{" "}
+                {order.fulfillment_status.replace("_", " ")}
               </p>
               {order.tracking_number && (
                 <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">Tracking added</p>

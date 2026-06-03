@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isBuyerAuthRequiredPath } from "@/lib/buyer-auth-paths";
 
 type UserRole = "manager" | "buyer";
 
@@ -84,7 +85,7 @@ export async function middleware(request: NextRequest) {
     const isAccountAuthRoute =
       pathname === "/account/login" || pathname === "/account/signup";
     const isAccountRoute = pathname.startsWith("/account");
-    const isCheckout = pathname === "/checkout";
+    const requiresBuyerAccount = isBuyerAuthRequiredPath(pathname);
 
     const profileRole = (sessionUser?.app_metadata?.role as UserRole | undefined) ?? null;
 
@@ -105,7 +106,16 @@ export async function middleware(request: NextRequest) {
       return redirect(request, "/account", supabaseResponse);
     }
 
-    if ((isAccountRoute && !isAccountAuthRoute) || isCheckout) {
+    if (requiresBuyerAccount) {
+      if (!sessionUser) {
+        return redirect(request, "/account/signup", supabaseResponse, { redirect: pathname });
+      }
+      if (!isBuyer(profileRole)) {
+        return redirect(request, "/account", supabaseResponse);
+      }
+    }
+
+    if (isAccountRoute && !isAccountAuthRoute) {
       if (!sessionUser) {
         return redirect(request, "/account/login", supabaseResponse, { redirect: pathname });
       }

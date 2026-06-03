@@ -4,6 +4,8 @@ export const OTTAWA_TIMEZONE = "America/Toronto";
 
 export const CANADA_SHIP_MIN_FEE_CAD = 20;
 export const SAME_DAY_PICKUP_SURCHARGE_CAD = 5;
+/** Non-refundable deposit for next-day delivery (balance due on delivery). */
+export const NEXT_DAY_DELIVERY_DEPOSIT_CAD = 5;
 
 export const NEXT_DAY_PICKUP_CUTOFF_MINUTES = 22 * 60 + 30; // 10:30 PM
 export const NEXT_DAY_DELIVERY_CUTOFF_MINUTES = 23 * 60; // 11:00 PM
@@ -28,6 +30,16 @@ export const DELIVERY_AREAS = [
 ] as const;
 
 export type DeliveryAreaId = (typeof DELIVERY_AREAS)[number]["id"];
+
+/** Next-day pickup meetup zones (no extra fee). */
+export const PICKUP_AREAS = [
+  { id: "findlay_creek", label: "Findlay Creek" },
+  { id: "orleans", label: "Orleans" },
+  { id: "south_keys", label: "South Keys" },
+  { id: "blair", label: "Blair" },
+] as const;
+
+export type PickupAreaId = (typeof PICKUP_AREAS)[number]["id"];
 
 export type OptionAvailability = {
   available: boolean;
@@ -86,14 +98,47 @@ export function isDeliveryAreaId(value: string): value is DeliveryAreaId {
   return DELIVERY_AREAS.some((area) => area.id === value);
 }
 
+export function isPickupAreaId(value: string): value is PickupAreaId {
+  return PICKUP_AREAS.some((area) => area.id === value);
+}
+
 export function getDeliveryArea(areaId: DeliveryAreaId) {
   return DELIVERY_AREAS.find((area) => area.id === areaId);
+}
+
+export function getPickupArea(areaId: PickupAreaId) {
+  return PICKUP_AREAS.find((area) => area.id === areaId);
 }
 
 export function fulfillmentTypeForOption(
   option: FulfillmentOption,
 ): "pickup" | "ship" {
   return option === "canada_ship" ? "ship" : "pickup";
+}
+
+/** Pickup at a meetup location — pay cash or e-transfer on arrival, not before. */
+export function isStorePickupOption(option: FulfillmentOption): boolean {
+  return option === "next_day_pickup" || option === "same_day_pickup";
+}
+
+/** Ship or home delivery — e-transfer required after placing the order (deposit only for delivery). */
+export function requiresPrepayEtransfer(option: FulfillmentOption): boolean {
+  return !isStorePickupOption(option);
+}
+
+export function isNextDayDeliveryOption(option: FulfillmentOption): boolean {
+  return option === "next_day_delivery";
+}
+
+export function getOrderPaymentSplit(
+  option: FulfillmentOption,
+  totalCad: number,
+): { depositCad: number; balanceDueCad: number | null } {
+  if (!isNextDayDeliveryOption(option)) {
+    return { depositCad: 0, balanceDueCad: null };
+  }
+  const depositCad = Math.min(NEXT_DAY_DELIVERY_DEPOSIT_CAD, totalCad);
+  return { depositCad, balanceDueCad: Math.max(0, totalCad - depositCad) };
 }
 
 export function requiresFullAddress(option: FulfillmentOption): boolean {
@@ -104,20 +149,28 @@ export function requiresDeliveryArea(option: FulfillmentOption): boolean {
   return option === "next_day_delivery";
 }
 
+export function requiresPickupArea(option: FulfillmentOption): boolean {
+  return option === "next_day_pickup";
+}
+
 export function calculateShippingFeeCad(
   option: FulfillmentOption,
-  deliveryAreaId?: string | null,
+  areas: { deliveryAreaId?: string | null; pickupAreaId?: string | null },
 ): number | null {
   switch (option) {
     case "canada_ship":
       return CANADA_SHIP_MIN_FEE_CAD;
-    case "next_day_pickup":
+    case "next_day_pickup": {
+      const id = areas.pickupAreaId;
+      if (!id || !isPickupAreaId(id)) return null;
       return 0;
+    }
     case "same_day_pickup":
       return SAME_DAY_PICKUP_SURCHARGE_CAD;
     case "next_day_delivery": {
-      if (!deliveryAreaId || !isDeliveryAreaId(deliveryAreaId)) return null;
-      return getDeliveryArea(deliveryAreaId)?.feeCad ?? null;
+      const id = areas.deliveryAreaId;
+      if (!id || !isDeliveryAreaId(id)) return null;
+      return getDeliveryArea(id)?.feeCad ?? null;
     }
     default:
       return null;
@@ -133,7 +186,7 @@ const UNAVAILABLE_ERROR_CODE: Record<FulfillmentOption, string> = {
 
 export function validateCheckoutSelection(
   option: FulfillmentOption,
-  deliveryAreaId: string | null,
+  areas: { deliveryAreaId: string | null; pickupAreaId: string | null },
   address: { street: string; city: string; province: string; postalCode: string },
   now = new Date(),
 ): { ok: true; feeCad: number } | { ok: false; error: string } {
@@ -142,7 +195,7 @@ export function validateCheckoutSelection(
     return { ok: false, error: UNAVAILABLE_ERROR_CODE[option] };
   }
 
-  const fee = calculateShippingFeeCad(option, deliveryAreaId);
+  const fee = calculateShippingFeeCad(option, areas);
   if (fee === null) {
     return { ok: false, error: "missing_delivery_area" };
   }
@@ -153,30 +206,50 @@ export function validateCheckoutSelection(
     }
   }
 
-  if (requiresDeliveryArea(option) && (!deliveryAreaId || !isDeliveryAreaId(deliveryAreaId))) {
+  if (
+    requiresPickupArea(option) &&
+    (!areas.pickupAreaId || !isPickupAreaId(areas.pickupAreaId))
+  ) {
+    return { ok: false, error: "missing_pickup_area" };
+  }
+
+  if (
+    requiresDeliveryArea(option) &&
+    (!areas.deliveryAreaId || !isDeliveryAreaId(areas.deliveryAreaId))
+  ) {
     return { ok: false, error: "missing_delivery_area" };
   }
 
   return { ok: true, feeCad: fee };
 }
 
+export type OrderShippingAddress = {
+  delivery_area?: string;
+  pickup_area?: string;
+  street?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
+};
+
 export function formatFulfillmentOptionLabel(
   option: string | null,
-  shippingAddress: { delivery_area?: string } | null,
+  shippingAddress: OrderShippingAddress | null,
 ): string {
   switch (option) {
     case "canada_ship":
       return "Ship (Canada) — next business day";
-    case "next_day_pickup":
-      return "Next-day pickup";
+    case "next_day_pickup": {
+      const areaId = shippingAddress?.pickup_area;
+      const area = areaId && isPickupAreaId(areaId) ? getPickupArea(areaId) : null;
+      return area ? `Next-day pickup — ${area.label}` : "Next-day pickup";
+    }
     case "same_day_pickup":
       return "Same-day pickup (+$5)";
     case "next_day_delivery": {
       const areaId = shippingAddress?.delivery_area;
       const area = areaId && isDeliveryAreaId(areaId) ? getDeliveryArea(areaId) : null;
-      return area
-        ? `Next-day delivery — ${area.label}`
-        : "Next-day delivery";
+      return area ? `Next-day delivery — ${area.label}` : "Next-day delivery";
     }
     case null:
       return "Legacy shipping";
@@ -196,7 +269,8 @@ export const CHECKOUT_OPTION_DETAILS: Record<
   },
   next_day_pickup: {
     title: "Next-day pickup",
-    description: "Pick up in Ottawa the next day. Order by 10:30 PM the day before pickup.",
+    description:
+      "Pick up the next day in Findlay Creek, Orleans, South Keys, or Blair. Order by 10:30 PM.",
   },
   same_day_pickup: {
     title: "Same-day pickup",
@@ -206,6 +280,6 @@ export const CHECKOUT_OPTION_DETAILS: Record<
   next_day_delivery: {
     title: "Next-day delivery",
     description:
-      "Local delivery in Ottawa area. Order by 11:00 PM for next-day delivery.",
+      "$5 non-refundable e-transfer deposit to book. Remaining balance due on delivery. No-show or cancel forfeits the deposit. Order by 11:00 PM.",
   },
 };

@@ -1,0 +1,98 @@
+"use client";
+
+import { useState } from "react";
+import { saveCollectrLinks } from "@/app/admin/import/actions";
+import type { CollectrRoleUrls } from "@/lib/collectr-settings";
+
+const FIELDS: { key: keyof CollectrRoleUrls; label: string; hint: string }[] = [
+  {
+    key: "main",
+    label: "Main (English inventory)",
+    hint: "Source of truth for core shop sync — cards here are for sale.",
+  },
+  {
+    key: "newPurchases",
+    label: "New purchases (temp holding)",
+    hint: "Staging only — use acquisition import, not showcase sync.",
+  },
+  {
+    key: "french",
+    label: "French",
+    hint: "French inventory track — included in showcase sync.",
+  },
+  {
+    key: "japaneseKorean",
+    label: "Japanese / Korean",
+    hint: "JP/KR inventory track — included in showcase sync.",
+  },
+];
+
+interface Props {
+  initialUrls: CollectrRoleUrls;
+}
+
+export function CollectrLinksForm({ initialUrls }: Props) {
+  const [urls, setUrls] = useState<CollectrRoleUrls>(initialUrls);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function updateField(key: keyof CollectrRoleUrls, value: string) {
+    setUrls((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+
+    const result = await saveCollectrLinks(urls);
+    if (!result.ok) {
+      setError(result.error);
+      setSaving(false);
+      return;
+    }
+
+    setMessage("Collectr links saved.");
+    setSaving(false);
+  }
+
+  return (
+    <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <div>
+        <h3 className="text-base font-semibold">Collectr links</h3>
+        <p className="mt-1 text-sm text-muted">
+          Four showcase roles: main, temp new purchases, French, and Japanese/Korean. Sync
+          uses main + language showcases only.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {FIELDS.map((field) => (
+          <label key={field.key} className="block space-y-1 text-sm">
+            <span className="font-medium">{field.label}</span>
+            <input
+              value={urls[field.key]}
+              onChange={(e) => updateField(field.key, e.target.value)}
+              placeholder="https://app.getcollectr.com/showcase/profile/@username"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            />
+            <span className="text-xs text-muted">{field.hint}</span>
+          </label>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background"
+      >
+        {saving ? "Saving…" : "Save Collectr links"}
+      </button>
+
+      {message && <p className="text-sm text-muted">{message}</p>}
+      {error && <p className="text-sm text-primary">{error}</p>}
+    </section>
+  );
+}

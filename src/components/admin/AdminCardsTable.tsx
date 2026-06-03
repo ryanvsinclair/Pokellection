@@ -3,15 +3,22 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { deleteCard, setCardStatus } from "@/app/admin/cards/actions";
+import { CardAdminStatusCell } from "@/components/admin/CardAdminStatusCell";
 import { searchCards } from "@/lib/shop-catalog";
 import type { Card } from "@/types/database";
 import { formatCad } from "@/lib/utils";
 
 interface Props {
   cards: Card[];
+  collectionTitlesByCardId: Map<string, string[]>;
+  pendingReservationCardIds: Set<string>;
 }
 
-export function AdminCardsTable({ cards }: Props) {
+export function AdminCardsTable({
+  cards,
+  collectionTitlesByCardId,
+  pendingReservationCardIds,
+}: Props) {
   const [query, setQuery] = useState("");
 
   const visibleCards = useMemo(() => searchCards(cards, query), [cards, query]);
@@ -53,7 +60,13 @@ export function AdminCardsTable({ cards }: Props) {
                 <td className="px-4 py-3 font-medium">{card.title}</td>
                 <td className="px-4 py-3 text-muted">{card.set_name ?? "—"}</td>
                 <td className="px-4 py-3">{formatCad(card.price_cad)}</td>
-                <td className="px-4 py-3 capitalize">{card.status}</td>
+                <td className="px-4 py-3">
+                  <CardAdminStatusCell
+                    card={card}
+                    collectionTitlesByCardId={collectionTitlesByCardId}
+                    pendingReservationCardIds={pendingReservationCardIds}
+                  />
+                </td>
                 <td className="px-4 py-3">{card.quantity}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">

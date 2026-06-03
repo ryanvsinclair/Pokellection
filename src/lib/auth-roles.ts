@@ -22,3 +22,13 @@ export async function getUserProfileRole(
     .single();
   return profile?.role ?? null;
 }
+
+/** Signed-in shopper who may use cart, checkout, and reservations. */
+export async function canPurchaseAsBuyer(
+  supabase: Client,
+  userId: string | undefined,
+): Promise<boolean> {
+  if (!userId) return false;
+  const role = await getUserProfileRole(supabase, userId);
+  return isBuyer(role);
+}

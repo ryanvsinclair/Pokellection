@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { SignUpToBuy } from "@/components/SignUpToBuy";
+import { canPurchaseAsBuyer } from "@/lib/auth-roles";
 import { getAvailableCardBySlug } from "@/lib/queries/cards";
 import { getPublishedCollectionSlugForCard } from "@/lib/queries/collections";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
@@ -52,6 +54,8 @@ export default async function CardDetailPage({ params }: Props) {
     ? await getCartQuantitiesByCardId(supabase, user.id)
     : {};
   const cartQuantity = cartQtyByCardId[card.id] ?? 0;
+  const canPurchase = await canPurchaseAsBuyer(supabase, user?.id);
+  const purchaseReturn = `/shop/${card.slug}`;
 
   const photo = card.photo_paths[0];
 
@@ -96,25 +100,37 @@ export default async function CardDetailPage({ params }: Props) {
           <p className="text-sm leading-relaxed text-muted">{card.description}</p>
         )}
 
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link
-            href={`/reserve/${card.id}`}
-            className="rounded-lg bg-primary px-5 py-3 text-center text-sm font-semibold text-white"
-          >
-            Reserve for pickup
-          </Link>
-          <AddToCartButton
-            cardId={card.id}
-            stockQuantity={card.quantity}
-            cartQuantity={cartQuantity}
-          />
-          <Link
-            href="/checkout"
-            className="rounded-lg bg-foreground px-5 py-3 text-center text-sm font-semibold text-background"
-          >
-            Go to checkout
-          </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          {canPurchase ? (
+            <>
+              <Link
+                href={`/reserve/${card.id}`}
+                className="rounded-lg bg-primary px-5 py-3 text-center text-sm font-semibold text-white"
+              >
+                Reserve for pickup
+              </Link>
+              <AddToCartButton
+                cardId={card.id}
+                stockQuantity={card.quantity}
+                cartQuantity={cartQuantity}
+                canPurchase
+              />
+              <Link
+                href="/checkout"
+                className="rounded-lg bg-foreground px-5 py-3 text-center text-sm font-semibold text-background"
+              >
+                Go to checkout
+              </Link>
+            </>
+          ) : (
+            <SignUpToBuy returnPath={purchaseReturn} />
+          )}
         </div>
+        {!canPurchase && (
+          <p className="text-sm text-muted">
+            Create a free account to reserve, add to cart, or check out.
+          </p>
+        )}
       </div>
     </div>
   );

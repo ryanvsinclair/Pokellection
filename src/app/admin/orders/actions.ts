@@ -13,7 +13,12 @@ const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
   "completed",
   "cancelled",
 ];
-const PAYMENT_STATUSES: PaymentStatus[] = ["awaiting_transfer", "received", "refunded"];
+const PAYMENT_STATUSES: PaymentStatus[] = [
+  "awaiting_transfer",
+  "deposit_received",
+  "received",
+  "refunded",
+];
 
 export async function updateOrder(formData: FormData) {
   const orderId = String(formData.get("order_id") ?? "");

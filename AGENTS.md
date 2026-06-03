@@ -25,6 +25,7 @@ Supabase (`@supabase/ssr` + `@supabase/supabase-js`).
 | `src/types/database.ts` | Named aliases (`Card`, `Order`, enums) derived from `supabase.ts`. |
 | `supabase/migrations/` | SQL schema + RLS. The schema source of truth. |
 | `ARCHITECTURE.md` | The **"why"** — non-obvious decisions & gotchas. Read before changing those systems; append when you learn something new. |
+| `docs/COLLECTR_INVENTORY_SPEC.md` | **Collectr + inventory product spec** — main/French/JP-KR sync, temp acquisition import, ROI. Read before changing import/sync. |
 
 ## Before you add code — checklist
 

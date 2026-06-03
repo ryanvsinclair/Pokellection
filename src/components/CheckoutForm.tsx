@@ -8,8 +8,14 @@ import {
   DELIVERY_AREAS,
   type FulfillmentOption,
   type OptionAvailability,
+  PICKUP_AREAS,
   requiresDeliveryArea,
   requiresFullAddress,
+  requiresPickupArea,
+  getOrderPaymentSplit,
+  isNextDayDeliveryOption,
+  NEXT_DAY_DELIVERY_DEPOSIT_CAD,
+  requiresPrepayEtransfer,
 } from "@/lib/checkout-options";
 import { SupportContact } from "@/components/SupportContact";
 import { formatCad } from "@/lib/utils";
@@ -46,16 +52,29 @@ export function CheckoutForm({
     firstAvailableOption(availability),
   );
   const [deliveryArea, setDeliveryArea] = useState<string>(DELIVERY_AREAS[0].id);
+  const [pickupArea, setPickupArea] = useState<string>(PICKUP_AREAS[0].id);
 
   const needsAddress = requiresFullAddress(option);
-  const needsArea = requiresDeliveryArea(option);
+  const needsDeliveryArea = requiresDeliveryArea(option);
+  const needsPickupArea = requiresPickupArea(option);
+
+  const areaSelection = useMemo(
+    () => ({
+      deliveryAreaId: needsDeliveryArea ? deliveryArea : null,
+      pickupAreaId: needsPickupArea ? pickupArea : null,
+    }),
+    [needsDeliveryArea, needsPickupArea, deliveryArea, pickupArea],
+  );
 
   const shippingFee = useMemo(
-    () => calculateShippingFeeCad(option, needsArea ? deliveryArea : null) ?? 0,
-    [option, deliveryArea, needsArea],
+    () => calculateShippingFeeCad(option, areaSelection) ?? 0,
+    [option, areaSelection],
   );
 
   const total = subtotalCad + shippingFee;
+  const prepay = requiresPrepayEtransfer(option);
+  const deliveryDeposit = isNextDayDeliveryOption(option);
+  const { depositCad, balanceDueCad } = getOrderPaymentSplit(option, total);
 
   return (
     <form action={placeOrder} className="space-y-4 rounded-xl border border-border bg-card p-5">
@@ -68,7 +87,11 @@ export function CheckoutForm({
           const avail = availability[id];
           const fee = calculateShippingFeeCad(
             id,
-            id === "next_day_delivery" ? deliveryArea : null,
+            id === "next_day_delivery"
+              ? { deliveryAreaId: deliveryArea }
+              : id === "next_day_pickup"
+                ? { pickupAreaId: pickupArea }
+                : {},
           );
           const feeLabel =
             fee === null
@@ -112,13 +135,32 @@ export function CheckoutForm({
         })}
       </fieldset>
 
-      {needsArea && (
+      {needsPickupArea && (
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium">Pickup area</span>
+          <select
+            name="pickup_area"
+            value={pickupArea}
+            onChange={(e) => setPickupArea(e.target.value)}
+            required
+            className="w-full rounded-lg border border-border px-3 py-2"
+          >
+            {PICKUP_AREAS.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {needsDeliveryArea && (
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Delivery area</span>
           <select
             name="delivery_area"
             value={deliveryArea}
-            onChange={(e) => setDeliveryArea(e.target.value as typeof deliveryArea)}
+            onChange={(e) => setDeliveryArea(e.target.value)}
             required
             className="w-full rounded-lg border border-border px-3 py-2"
           >
@@ -208,14 +250,30 @@ export function CheckoutForm({
           <span className="text-muted">Fees</span>
           <span>{formatCad(shippingFee)}</span>
         </p>
-        <p className="flex justify-between text-base font-semibold">
-          <span>Total</span>
+        <p className="flex justify-between font-medium">
+          <span>Order total</span>
           <span>{formatCad(total)}</span>
         </p>
+        {deliveryDeposit && (
+          <>
+            <p className="flex justify-between border-t border-border pt-2 text-amber-800 dark:text-amber-300">
+              <span>Deposit due now (non-refundable)</span>
+              <span>{formatCad(depositCad)}</span>
+            </p>
+            <p className="flex justify-between text-muted">
+              <span>Balance on delivery</span>
+              <span>{formatCad(balanceDueCad ?? 0)}</span>
+            </p>
+          </>
+        )}
       </div>
 
       <p className="text-xs text-muted">
-        Pay by e-transfer after placing your order. All times are Ottawa (ET).
+        {deliveryDeposit
+          ? `Send a ${formatCad(NEXT_DAY_DELIVERY_DEPOSIT_CAD)} e-transfer deposit after placing your order to confirm delivery. The deposit is non-refundable if you cancel or no-show. Pay the remaining balance on delivery. Ottawa (ET) cutoffs apply.`
+          : prepay
+            ? "Pay by e-transfer after placing your order. All times are Ottawa (ET)."
+            : "Pay with cash or e-transfer when you pick up — no payment needed before arrival. All times are Ottawa (ET)."}
       </p>
 
       <SupportContact className="rounded-lg border border-border bg-surface px-3 py-3" />
@@ -224,7 +282,11 @@ export function CheckoutForm({
         type="submit"
         className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-white"
       >
-        Place order (e-transfer)
+        {deliveryDeposit
+          ? `Place order (${formatCad(depositCad)} deposit)`
+          : prepay
+            ? "Place order (e-transfer)"
+            : "Place order"}
       </button>
     </form>
   );

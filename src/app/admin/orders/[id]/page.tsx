@@ -3,6 +3,11 @@ import { notFound } from "next/navigation";
 import { updateOrder } from "@/app/admin/orders/actions";
 import { createClient } from "@/lib/supabase/server";
 import { formatFulfillmentOptionLabel } from "@/lib/checkout-options";
+import {
+  formatPaymentStatusLabel,
+  getBalanceDueOnDelivery,
+  orderHasDeliveryDeposit,
+} from "@/lib/order-payment";
 import { formatCad } from "@/lib/utils";
 
 interface Props {
@@ -29,6 +34,16 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           {order.buyer_name} · {order.buyer_email} · {order.buyer_phone}
         </p>
         <p className="mt-1 text-sm font-medium">{formatCad(order.total_cad)}</p>
+        <p className="mt-1 text-sm text-muted capitalize">
+          Payment: {formatPaymentStatusLabel(order.payment_status, order.payment_method, order)} (
+          {order.payment_method.replace(/_/g, " ")})
+        </p>
+        {orderHasDeliveryDeposit(order) && (
+          <p className="mt-1 text-sm text-muted">
+            Deposit {formatCad(order.deposit_cad)} (non-refundable) · Balance on delivery{" "}
+            {formatCad(getBalanceDueOnDelivery(order))}
+          </p>
+        )}
         <p className="mt-1 text-sm text-muted">
           {formatFulfillmentOptionLabel(
             order.fulfillment_option,
@@ -69,8 +84,9 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             defaultValue={order.payment_status}
             className="w-full rounded-lg border border-border px-3 py-2"
           >
-            <option value="awaiting_transfer">Awaiting transfer</option>
-            <option value="received">Received</option>
+            <option value="awaiting_transfer">Awaiting transfer / deposit</option>
+            <option value="deposit_received">Deposit received (balance on delivery)</option>
+            <option value="received">Paid in full</option>
             <option value="refunded">Refunded</option>
           </select>
         </label>

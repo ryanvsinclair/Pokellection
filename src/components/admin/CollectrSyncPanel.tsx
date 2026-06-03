@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { saveCollectrPortfolios } from "@/app/admin/import/actions";
 import type { CollectrPortfolioItem } from "@/lib/collectr";
 import { scrapeCollectrPortfolioFromBrowser } from "@/lib/collectr-client";
 import {
@@ -32,38 +31,20 @@ interface PreviewPayload {
 }
 
 interface Props {
-  initialPortfolios: CollectrPortfolioConfig[];
+  syncPortfolios: CollectrPortfolioConfig[];
 }
 
 const ALL_PORTFOLIOS = "__all__";
 
-function newPortfolioRow(): CollectrPortfolioConfig {
-  return {
-    id: crypto.randomUUID(),
-    label: "",
-    url: "",
-  };
-}
-
-export function CollectrSyncPanel({ initialPortfolios }: Props) {
-  const [portfolios, setPortfolios] = useState<CollectrPortfolioConfig[]>(
-    initialPortfolios.length > 0 ? initialPortfolios : [newPortfolioRow()],
-  );
+export function CollectrSyncPanel({ syncPortfolios }: Props) {
   const [syncTarget, setSyncTarget] = useState<string>(
-    initialPortfolios[0]?.id ?? ALL_PORTFOLIOS,
+    syncPortfolios.length === 1 ? syncPortfolios[0].id : ALL_PORTFOLIOS,
   );
-  const [savingPortfolios, setSavingPortfolios] = useState(false);
-  const [portfolioMessage, setPortfolioMessage] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
-
-  const savedPortfolios = useMemo(
-    () => portfolios.filter((row) => row.url.trim()),
-    [portfolios],
-  );
 
   const summary = useMemo(() => {
     if (!preview) return null;
@@ -76,52 +57,9 @@ export function CollectrSyncPanel({ initialPortfolios }: Props) {
     };
   }, [preview]);
 
-  function updatePortfolio(id: string, patch: Partial<CollectrPortfolioConfig>) {
-    setPortfolios((rows) =>
-      rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
-    );
-  }
-
-  function addPortfolio() {
-    setPortfolios((rows) => [...rows, newPortfolioRow()]);
-  }
-
-  function removePortfolio(id: string) {
-    setPortfolios((rows) => {
-      const next = rows.filter((row) => row.id !== id);
-      return next.length > 0 ? next : [newPortfolioRow()];
-    });
-    if (syncTarget === id) {
-      setSyncTarget(ALL_PORTFOLIOS);
-    }
-  }
-
-  async function handleSavePortfolios() {
-    setSavingPortfolios(true);
-    setPortfolioMessage(null);
-    setError(null);
-
-    const result = await saveCollectrPortfolios(portfolios);
-    if (!result.ok) {
-      setPortfolioMessage(result.error);
-      setSavingPortfolios(false);
-      return;
-    }
-
-    const normalized = portfolios
-      .map((row) => ({ ...row, url: row.url.trim(), label: row.label.trim() }))
-      .filter((row) => row.url);
-    setPortfolios(normalized.length > 0 ? normalized : [newPortfolioRow()]);
-    if (!normalized.some((row) => row.id === syncTarget)) {
-      setSyncTarget(normalized.length === 1 ? normalized[0].id : ALL_PORTFOLIOS);
-    }
-    setPortfolioMessage("Portfolios saved.");
-    setSavingPortfolios(false);
-  }
-
   function portfoliosToSync(): CollectrPortfolioConfig[] {
-    if (syncTarget === ALL_PORTFOLIOS) return savedPortfolios;
-    const one = savedPortfolios.find((row) => row.id === syncTarget);
+    if (syncTarget === ALL_PORTFOLIOS) return syncPortfolios;
+    const one = syncPortfolios.find((row) => row.id === syncTarget);
     return one ? [one] : [];
   }
 
@@ -135,8 +73,8 @@ export function CollectrSyncPanel({ initialPortfolios }: Props) {
       const targets = portfoliosToSync();
       const syncLabel =
         syncTarget === ALL_PORTFOLIOS
-          ? `All portfolios (${targets.length})`
-          : (targets[0]?.label ?? "Portfolio");
+          ? `All sync showcases (${targets.length})`
+          : (targets[0]?.label ?? "Showcase");
 
       const scrapeResult = await scrapeCollectrPortfoliosFromBrowser(
         targets,
@@ -209,112 +147,55 @@ export function CollectrSyncPanel({ initialPortfolios }: Props) {
     setApplying(false);
   }
 
+  if (syncPortfolios.length === 0) {
+    return (
+      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold">Sync showcases</h3>
+        <p className="text-sm text-muted">
+          Save at least one sync showcase (main, French, or Japanese/Korean) in Collectr links
+          above. New purchases is not included in sync.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-6 rounded-xl border border-border bg-card p-5">
       <div>
-        <h3 className="text-base font-semibold">Collectr sync</h3>
+        <h3 className="text-base font-semibold">Sync showcases</h3>
         <p className="mt-1 text-sm text-muted">
-          Collectr decides what is for sale: owned in your showcase → listed; missing → delisted
-          (draft). Sold history stays on{" "}
+          Main + French + Japanese/Korean only. Collectr decides what is for sale: in showcase →
+          listed; missing → delisted (draft). Sold history stays on{" "}
           <a href="/admin/sales" className="font-medium text-primary underline">
             Sales
           </a>
-          . Re-buy a card and sync will list it again — remove sold copies from Collectr after
-          each sale.
+          .
         </p>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold">Your Collectr portfolios</h4>
-          <button
-            type="button"
-            onClick={addPortfolio}
-            className="text-sm font-medium text-primary"
-          >
-            + Add portfolio
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {portfolios.map((portfolio, index) => (
-            <div
-              key={portfolio.id}
-              className="grid gap-2 rounded-lg border border-border bg-surface p-3 sm:grid-cols-[1fr_2fr_auto]"
-            >
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Label</span>
-                <input
-                  value={portfolio.label}
-                  onChange={(e) => updatePortfolio(portfolio.id, { label: e.target.value })}
-                  placeholder={index === 0 ? "Main inventory" : "Portfolio name"}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2"
-                />
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Showcase URL</span>
-                <input
-                  value={portfolio.url}
-                  onChange={(e) => updatePortfolio(portfolio.id, { url: e.target.value })}
-                  placeholder="https://app.getcollectr.com/showcase/profile/@username"
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2"
-                />
-              </label>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={() => removePortfolio(portfolio.id)}
-                  className="rounded-lg border border-border px-3 py-2 text-sm text-muted hover:text-foreground"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleSavePortfolios}
-            disabled={savingPortfolios}
-            className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background"
-          >
-            {savingPortfolios ? "Saving…" : "Save portfolios"}
-          </button>
-        </div>
-        {portfolioMessage && (
-          <p className="text-sm text-muted">{portfolioMessage}</p>
-        )}
-      </div>
-
-      <div className="space-y-2 border-t border-border pt-4">
+      <div className="space-y-2">
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Sync from</span>
           <select
             value={syncTarget}
             onChange={(e) => setSyncTarget(e.target.value)}
-            disabled={savedPortfolios.length === 0}
             className="w-full max-w-md rounded-lg border border-border bg-background px-3 py-2"
           >
-            {savedPortfolios.length > 1 && (
-              <option value={ALL_PORTFOLIOS}>All saved portfolios</option>
+            {syncPortfolios.length > 1 && (
+              <option value={ALL_PORTFOLIOS}>All sync showcases</option>
             )}
-            {savedPortfolios.map((portfolio) => (
+            {syncPortfolios.map((portfolio) => (
               <option key={portfolio.id} value={portfolio.id}>
                 {portfolio.label || portfolio.url}
               </option>
             ))}
           </select>
         </label>
-        {savedPortfolios.length === 0 && (
-          <p className="text-sm text-muted">Save at least one portfolio URL before syncing.</p>
-        )}
 
         <button
           type="button"
           onClick={runPreview}
-          disabled={loadingPreview || savedPortfolios.length === 0}
+          disabled={loadingPreview}
           className="rounded-lg border border-border px-4 py-2 text-sm font-semibold"
         >
           {loadingPreview ? "Checking portfolio..." : "Preview sync changes"}
