@@ -16,6 +16,7 @@ import { formatCondition } from "@/lib/utils";
 
 interface Props {
   cards: Card[];
+  justSoldCards?: Card[];
   cartQtyByCardId?: Record<string, number>;
 }
 
@@ -33,15 +34,23 @@ const selectClassName =
 
 const labelClassName = "text-xs font-semibold uppercase tracking-wide text-muted";
 
-export function ShopBrowser({ cards, cartQtyByCardId = {} }: Props) {
+export function ShopBrowser({ cards, justSoldCards = [], cartQtyByCardId = {} }: Props) {
   const [filters, setFilters] = useState<ShopFilters>(DEFAULT_SHOP_FILTERS);
   const [sort, setSort] = useState<ShopSort>(DEFAULT_SHOP_SORT);
 
+  const listingCards = useMemo(() => {
+    const availableIds = new Set(cards.map((c) => c.id));
+    const soldOnly = justSoldCards.filter((c) => !availableIds.has(c.id));
+    return [...soldOnly, ...cards];
+  }, [cards, justSoldCards]);
+
   const { sets, printings } = useMemo(() => getShopFilterOptions(cards), [cards]);
-  const visibleCards = useMemo(
-    () => applyShopCatalog(cards, filters, sort),
-    [cards, filters, sort],
-  );
+  const visibleCards = useMemo(() => {
+    const availableIds = new Set(cards.map((c) => c.id));
+    const soldOnly = justSoldCards.filter((c) => !availableIds.has(c.id));
+    const filteredAvailable = applyShopCatalog(cards, filters, sort);
+    return [...soldOnly, ...filteredAvailable];
+  }, [cards, justSoldCards, filters, sort]);
 
   const hasActiveFilters =
     filters.query.trim() !== "" ||
@@ -142,7 +151,7 @@ export function ShopBrowser({ cards, cartQtyByCardId = {} }: Props) {
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
           <p className="text-muted">
-            Showing {visibleCards.length} of {cards.length} cards
+            Showing {visibleCards.length} of {listingCards.length} cards
           </p>
           {hasActiveFilters && (
             <button

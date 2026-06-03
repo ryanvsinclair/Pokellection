@@ -10,6 +10,7 @@ const nav = [
   { href: "/admin/import", label: "CSV import" },
   { href: "/admin/reservations", label: "Reservations" },
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/sales", label: "Sales" },
   { href: "/admin/settings", label: "Settings" },
 ];
 

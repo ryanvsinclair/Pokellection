@@ -1,10 +1,21 @@
 import { CsvImportForm } from "@/components/admin/CsvImportForm";
 import { CollectrSyncPanel } from "@/components/admin/CollectrSyncPanel";
+import { parseCollectrPortfoliosFromDb } from "@/lib/collectr-portfolios";
+import { createClient } from "@/lib/supabase/server";
 
-export default function ImportPage() {
+export default async function ImportPage() {
+  const supabase = await createClient();
+  const { data: settings } = await supabase
+    .from("site_settings")
+    .select("collectr_portfolios")
+    .eq("id", 1)
+    .maybeSingle();
+
+  const initialPortfolios = parseCollectrPortfoliosFromDb(settings?.collectr_portfolios);
+
   return (
     <div className="max-w-3xl space-y-4">
-      <CollectrSyncPanel />
+      <CollectrSyncPanel initialPortfolios={initialPortfolios} />
 
       <div>
         <h2 className="text-lg font-semibold">Bulk CSV import</h2>

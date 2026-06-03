@@ -51,6 +51,7 @@ export async function getCollectionListingMeta(
 
   const cardsByCollection = new Map<string, { sort_order: number; card: Card }[]>();
   for (const row of links ?? []) {
+    if (!row.cards) continue;
     const card = row.cards as Card;
     const list = cardsByCollection.get(row.collection_id) ?? [];
     list.push({ sort_order: row.sort_order, card });
@@ -107,12 +108,14 @@ export async function getAvailableCollectionBySlug(
   }
 
   const cards = sortCollectionCards(
-    (links ?? []).map((row) => ({
-      collection_id: row.collection_id,
-      card_id: row.card_id,
-      sort_order: row.sort_order,
-      card: row.cards as Card,
-    })),
+    (links ?? [])
+      .filter((row) => row.cards != null)
+      .map((row) => ({
+        collection_id: row.collection_id,
+        card_id: row.card_id,
+        sort_order: row.sort_order,
+        card: row.cards as Card,
+      })),
   );
 
   return { ...collection, cards };
@@ -146,12 +149,14 @@ export async function getCollectionById(
     .eq("collection_id", id);
 
   const cards = sortCollectionCards(
-    (links ?? []).map((row) => ({
-      collection_id: row.collection_id,
-      card_id: row.card_id,
-      sort_order: row.sort_order,
-      card: row.cards as Card,
-    })),
+    (links ?? [])
+      .filter((row) => row.cards != null)
+      .map((row) => ({
+        collection_id: row.collection_id,
+        card_id: row.card_id,
+        sort_order: row.sort_order,
+        card: row.cards as Card,
+      })),
   );
 
   return { ...collection, cards };

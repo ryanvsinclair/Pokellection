@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Card } from "@/types/database";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { isJustSoldCard } from "@/lib/card-sold";
 import { formatCad, formatCondition, getPhotoUrl } from "@/lib/utils";
 
 interface CardGridProps {
@@ -28,19 +29,30 @@ export function CardGrid({
       {cards.map((card) => {
         const photo = card.photo_paths[0];
         const meta = [card.rarity, card.card_number].filter(Boolean).join(" • ");
+        const justSold = isJustSoldCard(card);
+
         return (
           <div
             key={card.id}
-            className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-sm transition hover:shadow-md"
+            className={`flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-sm transition hover:shadow-md ${
+              justSold ? "opacity-90" : ""
+            }`}
           >
-            <Link href={`/shop/${card.slug}`} className="group block p-3 pb-0">
+            <Link
+              href={justSold ? "#" : `/shop/${card.slug}`}
+              className={`group block p-3 pb-0 ${justSold ? "pointer-events-none" : ""}`}
+              aria-disabled={justSold}
+              tabIndex={justSold ? -1 : undefined}
+            >
               <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-surface-strong">
                 {photo ? (
                   <Image
                     src={getPhotoUrl(photo)}
                     alt={card.title}
                     fill
-                    className="object-contain transition group-hover:scale-[1.02]"
+                    className={`object-contain transition ${
+                      justSold ? "grayscale-[0.35]" : "group-hover:scale-[1.02]"
+                    }`}
                     sizes="(max-width: 640px) 50vw, 25vw"
                   />
                 ) : (
@@ -48,13 +60,24 @@ export function CardGrid({
                     No photo
                   </div>
                 )}
+                {justSold && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <span className="rounded-full bg-card px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-foreground shadow-md">
+                      Just sold
+                    </span>
+                  </div>
+                )}
               </div>
             </Link>
 
             <div className="flex flex-1 flex-col gap-1 p-3">
-              <Link href={`/shop/${card.slug}`} className="hover:underline">
+              {justSold ? (
                 <h3 className="line-clamp-2 text-sm font-bold leading-snug">{card.title}</h3>
-              </Link>
+              ) : (
+                <Link href={`/shop/${card.slug}`} className="hover:underline">
+                  <h3 className="line-clamp-2 text-sm font-bold leading-snug">{card.title}</h3>
+                </Link>
+              )}
 
               {card.set_name && (
                 <p className="line-clamp-1 text-xs text-muted underline decoration-border underline-offset-2">
@@ -71,15 +94,25 @@ export function CardGrid({
 
               <div className="mt-auto flex items-end justify-between gap-2 pt-2">
                 <div>
-                  <p className="text-lg font-bold text-primary">{formatCad(card.price_cad)}</p>
-                  <p className="text-xs text-teal-600 dark:text-teal-400">Qty: {card.quantity}</p>
+                  <p
+                    className={`text-lg font-bold ${justSold ? "text-muted line-through" : "text-primary"}`}
+                  >
+                    {formatCad(card.price_cad)}
+                  </p>
+                  {!justSold && (
+                    <p className="text-xs text-teal-600 dark:text-teal-400">
+                      Qty: {card.quantity}
+                    </p>
+                  )}
                 </div>
-                <AddToCartButton
-                  cardId={card.id}
-                  stockQuantity={card.quantity}
-                  cartQuantity={cartQtyByCardId[card.id] ?? 0}
-                  variant="icon"
-                />
+                {!justSold && (
+                  <AddToCartButton
+                    cardId={card.id}
+                    stockQuantity={card.quantity}
+                    cartQuantity={cartQtyByCardId[card.id] ?? 0}
+                    variant="icon"
+                  />
+                )}
               </div>
             </div>
           </div>

@@ -26,26 +26,28 @@ export function CollectionGrid({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {collections.map((collection) => (
         <Link
           key={collection.id}
           href={`/collections/${collection.slug}`}
-          className="overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/40 hover:shadow-md"
+          className="overflow-hidden rounded-xl border border-border bg-card transition hover:border-primary/40 hover:shadow-sm"
         >
-          <div className="border-b border-border bg-surface-strong/40 p-2">
+          <div className="border-b border-border bg-surface-strong/40 px-2 py-1.5">
             <CollectionPreviewGrid
               images={previewImages[collection.id] ?? []}
               title={collection.title}
             />
           </div>
-          <div className="p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-primary">Collection</p>
-            <h3 className="mt-1 text-lg font-bold">{collection.title}</h3>
+          <div className="px-3 py-2.5">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-primary">
+              Collection
+            </p>
+            <h3 className="mt-0.5 line-clamp-1 text-sm font-bold">{collection.title}</h3>
             {collection.description && (
-              <p className="mt-1 line-clamp-2 text-sm text-muted">{collection.description}</p>
+              <p className="mt-0.5 line-clamp-1 text-xs text-muted">{collection.description}</p>
             )}
-            <div className="mt-3 flex items-center justify-between text-sm">
+            <div className="mt-2 flex items-center justify-between text-xs">
               <span className="font-semibold text-primary">{formatCad(collection.price_cad)}</span>
               <span className="text-muted">{cardCounts[collection.id] ?? "—"} cards</span>
             </div>

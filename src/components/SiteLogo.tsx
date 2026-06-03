@@ -1,41 +1,21 @@
-import Image from "next/image";
 import Link from "next/link";
+import { PokellectionLogoMark } from "@/components/PokellectionLogoMark";
 import { SITE_NAME } from "@/lib/utils";
 
-/** Trimmed wordmark asset (1397×340). */
-const LOGO_WIDTH = 1397;
-const LOGO_HEIGHT = 340;
-
 interface Props {
-  priority?: boolean;
   className?: string;
 }
 
-const logoProps = {
-  width: LOGO_WIDTH,
-  height: LOGO_HEIGHT,
-  sizes: "(max-width: 640px) 220px, 320px" as const,
-};
-
-export function SiteLogo({
-  priority = false,
-  className = "h-12 w-auto sm:h-16",
-}: Props) {
+export function SiteLogo({ className = "h-10 w-auto sm:h-12" }: Props) {
   return (
-    <Link href="/" className="inline-flex shrink-0 items-center">
-      <Image
-        src="/pokellection-logo-mark.png"
-        alt={SITE_NAME}
-        {...logoProps}
-        priority={priority}
-        className={`${className} dark:hidden`}
-      />
-      <Image
-        src="/pokellection-logo-mark-dark.png"
-        alt=""
-        aria-hidden
-        {...logoProps}
-        priority={priority}
+    <Link
+      href="/"
+      className="inline-flex shrink-0 items-center overflow-visible"
+      aria-label={SITE_NAME}
+    >
+      <PokellectionLogoMark variant="light" className={`${className} dark:hidden`} />
+      <PokellectionLogoMark
+        variant="dark"
         className={`${className} hidden dark:block`}
       />
     </Link>

@@ -1,0 +1,15 @@
+<svg viewBox="0 0 310 72" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pokellection" overflow="visible">
+  <g transform="translate(14 11) rotate(-12 22 30)">
+    <rect x="0" y="0" width="44" height="60" rx="4" fill="#dc2626" stroke="#991b1b" stroke-width="1.75"/>
+    <rect x="5" y="5" width="36" height="36" rx="2.5" fill="#fca5a5" stroke="#991b1b" stroke-width="1"/>
+    <rect x="5" y="44" width="36" height="11" rx="2" fill="#b91c1c" stroke="#991b1b" stroke-width="1"/>
+  </g>
+  <g transform="translate(34 9) rotate(8 22 30)">
+    <rect x="0" y="0" width="44" height="60" rx="4" fill="#ec4899" stroke="#9d174d" stroke-width="1.75"/>
+    <rect x="5" y="5" width="36" height="36" rx="2.5" fill="#fbcfe8" stroke="#9d174d" stroke-width="1"/>
+    <rect x="5" y="44" width="36" height="11" rx="2" fill="#db2777" stroke="#9d174d" stroke-width="1"/>
+  </g>
+  <text x="86" y="48" font-family="system-ui, sans-serif" font-size="36" font-weight="700" letter-spacing="-0.02em">
+    <tspan fill="#E3350D">Poke</tspan><tspan fill="#0f172a">llection</tspan>
+  </text>
+</svg>

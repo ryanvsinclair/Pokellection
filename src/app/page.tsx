@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CardGrid } from "@/components/CardGrid";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
-import { getLatestArrivals, LATEST_ARRIVAL_TIERS } from "@/lib/queries/cards";
+import { getJustSoldCards, getLatestArrivals, LATEST_ARRIVAL_TIERS } from "@/lib/queries/cards";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
@@ -9,7 +9,13 @@ export default async function HomePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const cards = await getLatestArrivals(supabase);
+  const [cards, justSoldCards] = await Promise.all([
+    getLatestArrivals(supabase),
+    getJustSoldCards(supabase, 72, 8),
+  ]);
+  const availableIds = new Set(cards.map((c) => c.id));
+  const justSoldForHome = justSoldCards.filter((c) => !availableIds.has(c.id));
+  const homeGridCards = [...justSoldForHome, ...cards];
 
   const cartQtyByCardId = user
     ? await getCartQuantitiesByCardId(supabase, user.id)
@@ -21,12 +27,11 @@ export default async function HomePage() {
         <p className="mb-2 text-sm font-medium uppercase tracking-wide text-red-100">
           Ottawa, Ontario
         </p>
-        <h1 className="max-w-xl text-3xl font-bold leading-tight md:text-5xl">
-          Your local Pokemon card shop
+        <h1 className="max-w-2xl text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
+          Independent Pokémon singles &amp; collections in Ottawa
         </h1>
         <p className="mt-4 max-w-lg text-red-50">
-          Browse singles, reserve for same-day pickup, or pay by e-transfer and
-          get tracked shipping anywhere in Canada.
+          Reserve for pickup, pay by e-transfer, or ship anywhere in Canada.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -57,7 +62,7 @@ export default async function HomePage() {
           </Link>
         </div>
         <CardGrid
-          cards={cards ?? []}
+          cards={homeGridCards}
           cartQtyByCardId={cartQtyByCardId}
           emptyMessage="No new listings in these price ranges right now."
         />

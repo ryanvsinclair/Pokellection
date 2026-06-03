@@ -8,6 +8,18 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Collection preview images + RLS
+
+**Context:** Published bundles set member cards to `reserved`. Public `cards` RLS
+only allowed `available` / recent `sold`, so `collection_cards` → `cards(*)` joins
+returned null and listing previews were empty.
+
+**Decision:** `015_collection_member_cards_public_read.sql` adds a select policy:
+read `cards` rows linked to an `available` collection. Previews still built in
+`buildCollectionPreviewImages`; listing UI uses a compact 4-across thumb strip.
+
+---
+
 ## Checkout fulfillment options (Ottawa ET)
 
 **Context:** Checkout needs Canada ship, Ottawa pickup windows, and zoned next-day
@@ -74,16 +86,15 @@ handler — it races the action RSC payload.
 
 ---
 
-## Site logo: transparent PNG + dark variant
+## Site logo: fanned cards SVG + archived Pokéball PNGs
 
-**Context:** `pokellection-logo-mark.png` had an opaque white matte; in dark mode the
-header showed a white rectangle behind the wordmark.
+**Context:** Header mark should avoid the Pokéball silhouette; old PNG logos kept
+for optional reuse.
 
-**Decision:** Light asset uses a transparent background (white keyed to alpha).
-Dark mode swaps to `pokellection-logo-mark-dark.png` (black text/lines → light
-foreground) via `SiteLogo` (`dark:hidden` / `hidden dark:block`). Regenerate both
-from the source art if the mark changes — CSS blend modes alone cannot keep red
-"Poke" and readable "llection" on one raster.
+**Decision:** Active logo is inline SVG in `PokellectionLogoMark` (two generic empty
+TCG-style cards + wordmark). Previous raster marks live in
+`public/brand/archive/`. Export copies in `public/brand/pokellection-logo-cards*.svg`.
+To revert, point `SiteLogo` at `/brand/archive/pokellection-logo-mark.png` again.
 
 ---
 
@@ -195,6 +206,40 @@ Existing rows were converted once with `price_cad = price_cad * 1.38`.
 Re-running the sync re-derives CAD from raw USD × rate (no double-conversion of
 DB values). Update `USD_TO_CAD` when the rate drifts; managers can also edit any
 price after import.
+
+## "Just sold" shop badges (`cards.sold_at`)
+
+**Context:** Buyers should see when a listing recently sold without keeping it
+purchaseable.
+
+**Decision:** Set `sold_at` on every transition to `sold`; clear when relisted.
+Public RLS allows reading `sold` rows for 72h. Shop/home grids show a "Just sold"
+overlay via `isJustSoldCard()`; no add-to-cart.
+
+---
+
+## Collectr as listing source of truth; sales history separate
+
+**Context:** Inventory is curated in Collectr; site/private sales are historical facts.
+Re-acquiring the same variant should list again after sync.
+
+**Decision:** Collectr sync: in showcase → `available` (or keep `reserved` in a bundle);
+missing from showcase → `draft` (delist), not `sold`. `sold` only via checkout or
+`private_sales` admin form. Sync relists `sold`/`draft` rows when the card returns in
+Collectr. Sold ledger: `order_items` (site) + `private_sales` table (`/admin/sales`).
+
+---
+
+## Multiple Collectr portfolios (admin/import)
+
+**Context:** Managers keep separate Collectr showcases (e.g. personal vs trade stock).
+
+**Decision:** `site_settings.collectr_portfolios` stores `{ id, label, url }[]`.
+Admin/import saves links, then syncs one portfolio or all. Cards get a
+`collectr-showcase:<profileId>` tag; “mark sold” on sync only affects cards tagged
+for the showcase(s) being synced (not other portfolios).
+
+---
 
 ## Collectr sync runs in the browser, not the server
 

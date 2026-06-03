@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertManager } from "@/lib/admin-auth";
 import { roundPriceCad } from "@/lib/currency";
+import { soldAtForStatus } from "@/lib/card-sold";
 import { createClient } from "@/lib/supabase/server";
 import type { CardCondition, CardStatus } from "@/types/database";
 
@@ -18,7 +19,11 @@ export async function setCardStatus(formData: FormData) {
   const supabase = await createClient();
   await assertManager(supabase);
 
-  await supabase.from("cards").update({ status: status as CardStatus }).eq("id", cardId);
+  const nextStatus = status as CardStatus;
+  await supabase
+    .from("cards")
+    .update({ status: nextStatus, sold_at: soldAtForStatus(nextStatus) })
+    .eq("id", cardId);
 
   revalidatePath("/admin/cards");
   revalidatePath("/shop");
@@ -65,6 +70,7 @@ export async function saveCardEdits(formData: FormData) {
       quantity: Number(formData.get("quantity") ?? 1),
       description: String(formData.get("description") ?? "") || null,
       status,
+      sold_at: soldAtForStatus(status),
     })
     .eq("id", cardId);
 

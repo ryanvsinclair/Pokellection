@@ -8,19 +8,44 @@ import {
   parseCollectrIdentityFromTag,
   type CollectrPortfolioItem,
 } from "@/lib/collectr";
+import {
+  collectrShowcaseTag,
+  parseCollectrShowcaseFromTags,
+} from "@/lib/collectr-portfolios";
+import { soldAtForStatus } from "@/lib/card-sold";
 import { roundPriceCad } from "@/lib/currency";
 import { createClient } from "@/lib/supabase/server";
+import type { CardStatus } from "@/types/database";
 
 interface ExistingCollectrCard {
   id: string;
   tags: string[];
-  status: "available" | "reserved" | "sold" | "draft";
+  status: CardStatus;
 }
 
 function parseCollectrIdentityFromTags(tags: string[] | null): string | null {
   if (!tags) return null;
   const tagged = tags.find((tag) => tag.startsWith("collectr:"));
   return tagged ? parseCollectrIdentityFromTag(tagged) : null;
+}
+
+function statusWhenListedInCollectr(existing: ExistingCollectrCard): CardStatus {
+  if (existing.status === "reserved") return "reserved";
+  return "available";
+}
+
+function patchWhenListedInCollectr(existing: ExistingCollectrCard) {
+  const status = statusWhenListedInCollectr(existing);
+  return { status, sold_at: soldAtForStatus(status) };
+}
+
+function matchesSyncedShowcase(
+  card: ExistingCollectrCard,
+  showcaseProfileIds: Set<string>,
+): boolean {
+  if (showcaseProfileIds.size === 0) return true;
+  const showcaseId = parseCollectrShowcaseFromTags(card.tags);
+  return showcaseId !== null && showcaseProfileIds.has(showcaseId);
 }
 
 function extensionFromContentType(contentType: string | null): string {
@@ -59,8 +84,12 @@ async function uploadCollectrPhoto(
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { scraped?: CollectrPortfolioItem[] };
+    const body = (await request.json()) as {
+      scraped?: CollectrPortfolioItem[];
+      showcaseProfileIds?: string[];
+    };
     const scraped = body.scraped ?? [];
+    const showcaseProfileIds = new Set(body.showcaseProfileIds ?? []);
     if (scraped.length === 0) {
       return NextResponse.json({ error: "No preview data to apply." }, { status: 400 });
     }
@@ -83,18 +112,22 @@ export async function POST(request: Request) {
     }
 
     const scrapedIdentities = new Set(scraped.map((item) => collectrIdentity(item)));
-    const toMarkSold = Array.from(existingMap.entries()).filter(
-      ([identity, card]) => !scrapedIdentities.has(identity) && card.status !== "sold",
-    );
+    const toDelist = Array.from(existingMap.entries()).filter(([identity, card]) => {
+      if (scrapedIdentities.has(identity)) return false;
+      if (card.status === "reserved" || card.status === "sold") return false;
+      if (card.status !== "available" && card.status !== "draft") return false;
+      return matchesSyncedShowcase(card, showcaseProfileIds);
+    });
 
     let added = 0;
     let updated = 0;
-    let markedSold = 0;
+    let delisted = 0;
 
     for (const item of scraped) {
       const identity = collectrIdentity(item);
       const existing = existingMap.get(identity);
       const collectrTag = collectrTagFor(item);
+      const showcaseTags = [...showcaseProfileIds].map((id) => collectrShowcaseTag(id));
 
       if (!existing) {
         const photoPath = await uploadCollectrPhoto(supabase, item);
@@ -110,13 +143,17 @@ export async function POST(request: Request) {
           quantity: item.quantity,
           status: "available",
           description: "Imported from Collectr showcase.",
-          tags: ["collectr", collectrTag],
+          tags: ["collectr", collectrTag, ...showcaseTags],
           photo_paths: photoPath ? [photoPath] : [],
           featured: false,
         });
         if (!insertError) added += 1;
         continue;
       }
+
+      const mergedTags = Array.from(
+        new Set([...(existing.tags ?? []), "collectr", collectrTag, ...showcaseTags]),
+      );
 
       const { error: updateError } = await supabase
         .from("cards")
@@ -129,29 +166,31 @@ export async function POST(request: Request) {
           printing: item.productSubType,
           price_cad: roundPriceCad(item.marketPriceCad),
           quantity: item.quantity,
-          status: existing.status === "sold" ? "available" : existing.status,
+          ...patchWhenListedInCollectr(existing),
+          tags: mergedTags,
         })
         .eq("id", existing.id);
 
       if (!updateError) updated += 1;
     }
 
-    for (const [, card] of toMarkSold) {
+    for (const [, card] of toDelist) {
       const { error } = await supabase
         .from("cards")
-        .update({ status: "sold" })
+        .update({ status: "draft" })
         .eq("id", card.id);
-      if (!error) markedSold += 1;
+      if (!error) delisted += 1;
     }
 
     revalidatePath("/admin/cards");
     revalidatePath("/shop");
     revalidatePath("/admin/import");
+    revalidatePath("/collections");
 
     return NextResponse.json({
       added,
       updated,
-      markedSold,
+      delisted,
       totalScraped: scraped.length,
     });
   } catch (error) {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { assertManager } from "@/lib/admin-auth";
+import { markCardSoldUpdate } from "@/lib/card-sold";
 import { createClient } from "@/lib/supabase/server";
 import type { FulfillmentStatus, PaymentStatus } from "@/types/database";
 
@@ -50,7 +51,7 @@ export async function updateOrder(formData: FormData) {
 
     for (const item of items ?? []) {
       if (!item.card_id) continue;
-      await supabase.from("cards").update({ status: "sold" }).eq("id", item.card_id);
+      await supabase.from("cards").update(markCardSoldUpdate()).eq("id", item.card_id);
     }
   }
 

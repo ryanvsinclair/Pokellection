@@ -39,7 +39,7 @@ export async function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <SiteLogo priority />
+        <SiteLogo />
         <div className="flex items-center gap-2 md:gap-6">
           <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
             {navLinks.map((link) => (

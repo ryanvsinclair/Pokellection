@@ -171,6 +171,23 @@ export function mapShowcaseProducts(rows: CollectrRawItem[]): CollectrPortfolioI
   return Array.from(deduped.values());
 }
 
+/** Merge listings from multiple Collectr showcases (same identity → summed quantity). */
+export function mergeCollectrPortfolioItems(
+  items: CollectrPortfolioItem[],
+): CollectrPortfolioItem[] {
+  const deduped = new Map<string, CollectrPortfolioItem>();
+  for (const item of items) {
+    const key = collectrIdentity(item);
+    const existing = deduped.get(key);
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      deduped.set(key, { ...item });
+    }
+  }
+  return Array.from(deduped.values());
+}
+
 export function parseTotalCardsFromHtml(html: string): number | null {
   const match = html.match(/"total_cards":"(\d+)"/);
   if (!match) return null;

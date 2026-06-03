@@ -4,3 +4,4 @@ export * from "@/lib/queries/cards";
 export * from "@/lib/queries/cart";
 export * from "@/lib/queries/collections";
 export * from "@/lib/queries/orders";
+export * from "@/lib/queries/sales";

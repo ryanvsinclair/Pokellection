@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CollectionGrid } from "@/components/CollectionGrid";
 import { ShopBrowser } from "@/components/ShopBrowser";
-import { getAvailableCards } from "@/lib/queries/cards";
+import { getAvailableCards, getJustSoldCards } from "@/lib/queries/cards";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import {
   getAvailableCollections,
@@ -18,8 +18,9 @@ export default async function ShopPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [cards, collections, cartQtyByCardId] = await Promise.all([
+  const [cards, justSoldCards, collections, cartQtyByCardId] = await Promise.all([
     getAvailableCards(supabase),
+    getJustSoldCards(supabase),
     getAvailableCollections(supabase),
     user ? getCartQuantitiesByCardId(supabase, user.id) : Promise.resolve({}),
   ]);
@@ -57,7 +58,11 @@ export default async function ShopPage() {
 
       <section className="space-y-4">
         <h2 className="text-xl font-bold">Singles</h2>
-        <ShopBrowser cards={cards} cartQtyByCardId={cartQtyByCardId} />
+        <ShopBrowser
+          cards={cards}
+          justSoldCards={justSoldCards}
+          cartQtyByCardId={cartQtyByCardId}
+        />
       </section>
     </div>
   );

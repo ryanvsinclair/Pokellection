@@ -64,16 +64,12 @@ export function AdminCardsTable({ cards }: Props) {
                       Edit
                     </Link>
                     {card.status !== "sold" && (
-                      <form action={setCardStatus}>
-                        <input type="hidden" name="card_id" value={card.id} />
-                        <input type="hidden" name="status" value="sold" />
-                        <button
-                          type="submit"
-                          className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
-                        >
-                          Mark sold
-                        </button>
-                      </form>
+                      <Link
+                        href="/admin/sales"
+                        className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+                      >
+                        Record sale
+                      </Link>
                     )}
                     {card.status !== "draft" && (
                       <form action={setCardStatus}>

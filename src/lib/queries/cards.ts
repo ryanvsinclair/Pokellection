@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { JUST_SOLD_WINDOW_HOURS } from "@/lib/card-sold";
 import { getCardIdsInPublishedCollections } from "@/lib/queries/collections";
 import { logSupabaseFetchError } from "@/lib/supabase/env";
 import type { Card, Database } from "@/types/database";
@@ -82,6 +83,28 @@ export async function getLatestArrivals(
     ),
   );
   return mixLatestArrivalTiers(tierResults);
+}
+
+/** Recently sold singles still shown on the shop with a "Just sold" badge. */
+export async function getJustSoldCards(
+  supabase: Client,
+  windowHours = JUST_SOLD_WINDOW_HOURS,
+  limit = 24,
+): Promise<Card[]> {
+  const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("cards")
+    .select("*")
+    .eq("status", "sold")
+    .gte("sold_at", since)
+    .order("sold_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    logSupabaseFetchError("getJustSoldCards", error);
+    return [];
+  }
+  return data ?? [];
 }
 
 /** All singles for sale (excludes cards reserved in a published collection). */

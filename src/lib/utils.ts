@@ -1,6 +1,6 @@
 export const SITE_NAME = "Pokellection";
 export const SITE_DESCRIPTION =
-  "Buy Pokemon cards in Ottawa — same-day local pickup or shipped anywhere in Canada via e-transfer.";
+  "Independent Pokémon singles and collections in Ottawa — local pickup or shipped anywhere in Canada via e-transfer.";
 export const LOCATION = "Ottawa, Ontario";
 
 export const BUSINESS_EMAIL = "hello@pokellection.com";

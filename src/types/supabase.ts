@@ -29,6 +29,7 @@ export type Database = {
           rarity: string | null
           set_name: string | null
           slug: string
+          sold_at: string | null
           status: Database["public"]["Enums"]["card_status"]
           tags: string[]
           title: string
@@ -48,6 +49,7 @@ export type Database = {
           rarity?: string | null
           set_name?: string | null
           slug: string
+          sold_at?: string | null
           status?: Database["public"]["Enums"]["card_status"]
           tags?: string[]
           title: string
@@ -67,6 +69,7 @@ export type Database = {
           rarity?: string | null
           set_name?: string | null
           slug?: string
+          sold_at?: string | null
           status?: Database["public"]["Enums"]["card_status"]
           tags?: string[]
           title?: string
@@ -327,6 +330,53 @@ export type Database = {
         }
         Relationships: []
       }
+      private_sales: {
+        Row: {
+          buyer_name: string | null
+          card_id: string | null
+          collectr_identity: string | null
+          created_at: string
+          id: string
+          note: string | null
+          price_cad: number | null
+          quantity: number
+          sold_at: string
+          title_snapshot: string
+        }
+        Insert: {
+          buyer_name?: string | null
+          card_id?: string | null
+          collectr_identity?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          price_cad?: number | null
+          quantity?: number
+          sold_at?: string
+          title_snapshot: string
+        }
+        Update: {
+          buyer_name?: string | null
+          card_id?: string | null
+          collectr_identity?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          price_cad?: number | null
+          quantity?: number
+          sold_at?: string
+          title_snapshot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_sales_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -397,6 +447,7 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          collectr_portfolios: Json
           contact_email: string
           etransfer_email: string
           etransfer_instructions: string
@@ -408,6 +459,7 @@ export type Database = {
           untracked_shipping_fee_cad: number
         }
         Insert: {
+          collectr_portfolios?: Json
           contact_email?: string
           etransfer_email?: string
           etransfer_instructions?: string
@@ -419,6 +471,7 @@ export type Database = {
           untracked_shipping_fee_cad?: number
         }
         Update: {
+          collectr_portfolios?: Json
           contact_email?: string
           etransfer_email?: string
           etransfer_instructions?: string

@@ -8,6 +8,7 @@ import {
   isFulfillmentOption,
   validateCheckoutSelection,
 } from "@/lib/checkout-options";
+import { markCardSoldUpdate } from "@/lib/card-sold";
 import { collectionSinglePriceCad } from "@/lib/collection-pricing";
 import { detachCardFromPublishedCollection } from "@/lib/collection-fulfillment";
 import { getCartItemCount } from "@/lib/queries/cart";
@@ -580,7 +581,7 @@ export async function placeOrder(formData: FormData) {
   ];
 
   if (allCardIdsToSell.length > 0) {
-    await supabase.from("cards").update({ status: "sold" }).in("id", allCardIdsToSell);
+    await supabase.from("cards").update(markCardSoldUpdate()).in("id", allCardIdsToSell);
   }
 
   for (const item of collectionSingleLineItems) {
@@ -599,6 +600,8 @@ export async function placeOrder(formData: FormData) {
 
   revalidateCartSurfaces();
   revalidatePath("/account/orders");
+  revalidatePath("/admin/sales");
+  revalidatePath("/admin/cards");
 
   redirect(`/account/orders/${orderNumber}`);
 }
