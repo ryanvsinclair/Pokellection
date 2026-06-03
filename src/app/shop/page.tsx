@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ShopCatalogView } from "@/components/ShopCatalogView";
+import { ShopPricingNotice } from "@/components/ShopPricingNotice";
 import { getAvailableCards, getJustSoldCards } from "@/lib/queries/cards";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import {
@@ -48,6 +49,9 @@ export default async function ShopPage() {
             </>
           )}
         </p>
+        <div className="mt-3">
+          <ShopPricingNotice />
+        </div>
       </div>
 
       <ShopCatalogView

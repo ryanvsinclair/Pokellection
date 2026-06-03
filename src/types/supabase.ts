@@ -277,6 +277,9 @@ export type Database = {
           order_number: string
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_status: Database["public"]["Enums"]["payment_status"]
+          pricing_review_message: string | null
+          pricing_review_requested_at: string | null
+          pricing_review_resolved_at: string | null
           shipping_address: Json | null
           shipping_fee_cad: number
           shipping_method: Database["public"]["Enums"]["shipping_method"] | null
@@ -301,6 +304,9 @@ export type Database = {
           order_number: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          pricing_review_message?: string | null
+          pricing_review_requested_at?: string | null
+          pricing_review_resolved_at?: string | null
           shipping_address?: Json | null
           shipping_fee_cad?: number
           shipping_method?:
@@ -327,6 +333,9 @@ export type Database = {
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          pricing_review_message?: string | null
+          pricing_review_requested_at?: string | null
+          pricing_review_resolved_at?: string | null
           shipping_address?: Json | null
           shipping_fee_cad?: number
           shipping_method?:

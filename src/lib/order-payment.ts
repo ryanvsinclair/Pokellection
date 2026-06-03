@@ -5,6 +5,7 @@ import {
   requiresPrepayEtransfer,
   type FulfillmentOption,
 } from "@/lib/checkout-options";
+import { orderPricingReviewBlocksEtransfer } from "@/lib/order-pricing-review";
 import type { Order, PaymentMethod, PaymentStatus } from "@/types/database";
 
 export type OrderPaymentFields = Pick<
@@ -15,6 +16,8 @@ export type OrderPaymentFields = Pick<
   | "total_cad"
   | "deposit_cad"
   | "balance_due_cad"
+  | "pricing_review_requested_at"
+  | "pricing_review_resolved_at"
 >;
 
 export function orderPaymentMethodForFulfillment(
@@ -46,6 +49,7 @@ export function orderHasDeliveryDeposit(
 /** Amount the buyer should e-transfer now (deposit or full total). */
 export function getEtransferAmountDueNow(order: OrderPaymentFields): number {
   if (!orderRequiresPrepayEtransfer(order)) return 0;
+  if (orderPricingReviewBlocksEtransfer(order)) return 0;
   if (order.payment_status === "received" || order.payment_status === "refunded") {
     return 0;
   }
@@ -67,8 +71,21 @@ export function getBalanceDueOnDelivery(order: OrderPaymentFields): number {
 export function formatPaymentStatusLabel(
   status: PaymentStatus,
   paymentMethod: PaymentMethod,
-  order?: Pick<Order, "fulfillment_option" | "deposit_cad">,
+  order?: Pick<
+    Order,
+    | "fulfillment_option"
+    | "deposit_cad"
+    | "pricing_review_requested_at"
+    | "pricing_review_resolved_at"
+  >,
 ): string {
+  if (
+    status === "awaiting_transfer" &&
+    order &&
+    orderPricingReviewBlocksEtransfer(order)
+  ) {
+    return "Price review pending";
+  }
   if (status === "awaiting_transfer" && paymentMethod === "cash_on_pickup") {
     return "Pay on pickup";
   }

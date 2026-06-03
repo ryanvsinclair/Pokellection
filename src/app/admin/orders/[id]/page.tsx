@@ -8,6 +8,7 @@ import {
   getBalanceDueOnDelivery,
   orderHasDeliveryDeposit,
 } from "@/lib/order-payment";
+import { orderHasOpenPricingReview } from "@/lib/order-pricing-review";
 import { formatCad } from "@/lib/utils";
 
 interface Props {
@@ -21,6 +22,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   if (!order) notFound();
 
   const { data: items } = await supabase.from("order_items").select("*").eq("order_id", id);
+  const pricingReviewOpen = orderHasOpenPricingReview(order);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -53,6 +55,23 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         </p>
       </div>
 
+      {pricingReviewOpen && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm dark:border-violet-900/60 dark:bg-violet-950/40">
+          <p className="font-semibold text-violet-900 dark:text-violet-200">
+            Buyer requested price review
+          </p>
+          <p className="mt-1 text-violet-800 dark:text-violet-300">
+            Adjust subtotal below, then check &quot;Ready for buyer to pay&quot; so e-transfer
+            instructions appear on their order page.
+          </p>
+          {order.pricing_review_message && (
+            <p className="mt-2 text-violet-800 dark:text-violet-300">
+              <span className="font-medium">Message:</span> {order.pricing_review_message}
+            </p>
+          )}
+        </div>
+      )}
+
       <ul className="rounded-xl border border-border bg-card p-4 text-sm">
         {(items ?? []).map((item) => (
           <li key={item.id} className="border-b border-border py-2 last:border-none">
@@ -63,6 +82,39 @@ export default async function AdminOrderDetailPage({ params }: Props) {
 
       <form action={updateOrder} className="space-y-4 rounded-xl border border-border bg-card p-5">
         <input type="hidden" name="order_id" value={order.id} />
+
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium">Subtotal (CAD)</span>
+          <input
+            name="subtotal_cad"
+            type="number"
+            step="0.01"
+            min={0}
+            required
+            defaultValue={order.subtotal_cad}
+            className="w-full rounded-lg border border-border px-3 py-2"
+          />
+          <span className="text-xs text-muted">
+            Order total updates to subtotal + shipping fee ({formatCad(order.shipping_fee_cad)}).
+          </span>
+        </label>
+
+        {pricingReviewOpen && (
+          <label className="flex cursor-pointer gap-3 text-sm">
+            <input
+              type="checkbox"
+              name="resolve_pricing_review"
+              value="1"
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Ready for buyer to pay</span>
+              <span className="mt-0.5 block text-muted">
+                Clears the price review hold and shows e-transfer instructions with the total above.
+              </span>
+            </span>
+          </label>
+        )}
 
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Tracking number</span>

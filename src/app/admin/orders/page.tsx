@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { orderHasOpenPricingReview } from "@/lib/order-pricing-review";
 import { formatCad } from "@/lib/utils";
 
 export default async function AdminOrdersPage() {
@@ -25,7 +26,14 @@ export default async function AdminOrdersPage() {
         <tbody>
           {(orders ?? []).map((order) => (
             <tr key={order.id} className="border-t border-border">
-              <td className="px-4 py-3 font-medium">{order.order_number}</td>
+              <td className="px-4 py-3 font-medium">
+                {order.order_number}
+                {orderHasOpenPricingReview(order) && (
+                  <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-950/60 dark:text-violet-300">
+                    Price review
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-3">{order.buyer_name}</td>
               <td className="px-4 py-3">{formatCad(order.total_cad)}</td>
               <td className="px-4 py-3 capitalize">{order.payment_status.replace("_", " ")}</td>

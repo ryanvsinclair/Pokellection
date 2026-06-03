@@ -10,6 +10,7 @@ import {
   orderHasDeliveryDeposit,
   orderRequiresPrepayEtransfer,
 } from "@/lib/order-payment";
+import { orderHasOpenPricingReview } from "@/lib/order-pricing-review";
 import { formatCad, getEtransferEmail } from "@/lib/utils";
 import { getTrackingUrl } from "@/lib/tracking";
 
@@ -46,8 +47,12 @@ export default async function OrderDetailPage({ params }: Props) {
   const dueNow = getEtransferAmountDueNow(order);
   const balanceOnDelivery = getBalanceDueOnDelivery(order);
   const showDepositInstructions = hasDeposit && dueNow > 0;
+  const pricingReviewOpen = orderHasOpenPricingReview(order);
   const showFullPrepayInstructions =
-    prepay && !hasDeposit && order.payment_status === "awaiting_transfer";
+    prepay &&
+    !hasDeposit &&
+    order.payment_status === "awaiting_transfer" &&
+    !pricingReviewOpen;
   const showBalanceReminder =
     hasDeposit &&
     balanceOnDelivery > 0 &&
@@ -101,6 +106,24 @@ export default async function OrderDetailPage({ params }: Props) {
           </>
         )}
       </div>
+
+      {pricingReviewOpen && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm dark:border-violet-900/60 dark:bg-violet-950/40">
+          <p className="font-semibold text-violet-900 dark:text-violet-200">
+            Price review in progress
+          </p>
+          <p className="mt-2 text-violet-800 dark:text-violet-300">
+            We are reviewing your order against current market prices. Please wait for an updated
+            total before sending your e-transfer — payment instructions will appear here when
+            ready.
+          </p>
+          {order.pricing_review_message && (
+            <p className="mt-2 text-violet-800 dark:text-violet-300">
+              <span className="font-medium">Your note:</span> {order.pricing_review_message}
+            </p>
+          )}
+        </div>
+      )}
 
       {showDepositInstructions && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/60 dark:bg-amber-950/40">
@@ -212,6 +235,11 @@ export default async function OrderDetailPage({ params }: Props) {
 
       <ul className="space-y-2 rounded-xl border border-border bg-card p-4">
         <p className="text-sm font-semibold">Items</p>
+        {order.pricing_review_requested_at && (
+          <p className="text-xs text-muted">
+            Line prices are from checkout; your payable total is {formatCad(order.total_cad)}.
+          </p>
+        )}
         {(items ?? []).map((item) => (
           <li key={item.id} className="flex justify-between text-sm">
             <span>

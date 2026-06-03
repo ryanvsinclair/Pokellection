@@ -8,6 +8,17 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Canada ship price review before e-transfer
+
+**Context:** Shop prices reflect TCGPlayer at publish time; shipped orders are paid by e-transfer after checkout.
+
+**Decision:** On `canada_ship` checkout, buyer can opt in to a price review with an optional message
+(`pricing_review_*` columns on `orders`). While `pricing_review_requested_at` is set and
+`pricing_review_resolved_at` is null, buyer order page hides e-transfer instructions; manager
+adjusts `subtotal_cad` (total = subtotal + shipping) in admin and checks “Ready for buyer to pay”.
+
+---
+
 ## Card language from Collectr sync showcase
 
 **Context:** Main = English; French / Japanese / Korean are separate Collectr collection URLs.

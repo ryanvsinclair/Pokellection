@@ -75,6 +75,8 @@ export function CheckoutForm({
   const prepay = requiresPrepayEtransfer(option);
   const deliveryDeposit = isNextDayDeliveryOption(option);
   const { depositCad, balanceDueCad } = getOrderPaymentSplit(option, total);
+  const [pricingReviewRequested, setPricingReviewRequested] = useState(false);
+  const showPricingReview = option === "canada_ship";
 
   return (
     <form action={placeOrder} className="space-y-4 rounded-xl border border-border bg-card p-5">
@@ -276,6 +278,46 @@ export function CheckoutForm({
             : "Pay with cash or e-transfer when you pick up — no payment needed before arrival. All times are Ottawa (ET)."}
       </p>
 
+      {showPricingReview && (
+        <fieldset className="space-y-3 rounded-lg border border-border bg-surface p-4 text-sm">
+          <legend className="font-semibold text-foreground">Market pricing</legend>
+          <p className="text-muted">
+            Listed prices reflect TCGPlayer market values when each card was published. If
+            market prices have dropped, you can ask us to review your order total before you
+            send your e-transfer.
+          </p>
+          <label className="flex cursor-pointer gap-3">
+            <input
+              type="checkbox"
+              name="pricing_review_requested"
+              value="1"
+              checked={pricingReviewRequested}
+              onChange={(e) => setPricingReviewRequested(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Request a price review before I pay</span>
+              <span className="mt-0.5 block text-muted">
+                We will confirm your updated total on the order page. Do not e-transfer until
+                you see payment instructions with the final amount.
+              </span>
+            </span>
+          </label>
+          {pricingReviewRequested && (
+            <label className="block space-y-1">
+              <span className="font-medium">Message (optional)</span>
+              <textarea
+                name="pricing_review_message"
+                rows={3}
+                maxLength={2000}
+                placeholder="e.g. TCGPlayer NM price for Charizard ex is lower than listed"
+                className="w-full rounded-lg border border-border px-3 py-2"
+              />
+            </label>
+          )}
+        </fieldset>
+      )}
+
       <SupportContact className="rounded-lg border border-border bg-surface px-3 py-3" />
 
       <button
@@ -285,7 +327,9 @@ export function CheckoutForm({
         {deliveryDeposit
           ? `Place order (${formatCad(depositCad)} deposit)`
           : prepay
-            ? "Place order (e-transfer)"
+            ? pricingReviewRequested && showPricingReview
+              ? "Place order (price review)"
+              : "Place order (e-transfer)"
             : "Place order"}
       </button>
     </form>

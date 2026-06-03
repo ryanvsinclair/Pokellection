@@ -157,7 +157,6 @@ export default async function CheckoutPage({
         <p className="mt-1 text-sm text-muted">
           Ottawa pickup and delivery, or shipping anywhere in Canada. Pickup is paid on arrival;
           next-day delivery requires a $5 non-refundable deposit; shipping is paid in full after
-          checkout.
           placing your order.
         </p>
       </div>

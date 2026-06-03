@@ -8,6 +8,7 @@ import {
   isFulfillmentOption,
   validateCheckoutSelection,
 } from "@/lib/checkout-options";
+import { normalizePricingReviewMessage } from "@/lib/order-pricing-review";
 import { buildOrderPaymentAmounts, orderPaymentMethodForFulfillment } from "@/lib/order-payment";
 import { markCardSoldUpdate } from "@/lib/card-sold";
 import { collectionSinglePriceCad } from "@/lib/collection-pricing";
@@ -514,6 +515,13 @@ export async function placeOrder(formData: FormData) {
   );
   const orderNumber = generateOrderNumber();
 
+  const pricingReviewRequested =
+    fulfillmentOptionRaw === "canada_ship" &&
+    formData.get("pricing_review_requested") === "1";
+  const pricingReviewMessage = pricingReviewRequested
+    ? normalizePricingReviewMessage(String(formData.get("pricing_review_message") ?? ""))
+    : null;
+
   const shippingAddress =
     fulfillmentOptionRaw === "canada_ship" || fulfillmentOptionRaw === "next_day_delivery"
       ? {
@@ -549,6 +557,11 @@ export async function placeOrder(formData: FormData) {
       payment_method: orderPaymentMethodForFulfillment(fulfillmentOptionRaw),
       payment_status: "awaiting_transfer",
       fulfillment_status: "pending",
+      pricing_review_message: pricingReviewMessage,
+      pricing_review_requested_at: pricingReviewRequested
+        ? new Date().toISOString()
+        : null,
+      pricing_review_resolved_at: null,
     })
     .select("id")
     .single();

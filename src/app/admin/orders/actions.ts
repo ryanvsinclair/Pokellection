@@ -3,8 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { assertManager } from "@/lib/admin-auth";
 import { markCardSoldUpdate } from "@/lib/card-sold";
+import { orderHasOpenPricingReview } from "@/lib/order-pricing-review";
 import { createClient } from "@/lib/supabase/server";
 import type { FulfillmentStatus, PaymentStatus } from "@/types/database";
+
+function parseCadAmount(raw: string): number | null {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value * 100) / 100;
+}
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
   "pending",
@@ -39,14 +46,46 @@ export async function updateOrder(formData: FormData) {
     ? (rawPayment as PaymentStatus)
     : "awaiting_transfer";
 
-  await supabase
+  const { data: existing } = await supabase
     .from("orders")
-    .update({
-      tracking_number: trackingNumber,
-      fulfillment_status: fulfillmentStatus,
-      payment_status: paymentStatus,
-    })
-    .eq("id", orderId);
+    .select(
+      "order_number, fulfillment_option, shipping_fee_cad, subtotal_cad, total_cad, pricing_review_requested_at, pricing_review_resolved_at",
+    )
+    .eq("id", orderId)
+    .single();
+
+  if (!existing) return;
+
+  const resolvePricingReview = formData.get("resolve_pricing_review") === "1";
+  const subtotalRaw = String(formData.get("subtotal_cad") ?? "").trim();
+  const subtotalCad =
+    subtotalRaw.length > 0 ? parseCadAmount(subtotalRaw) : Number(existing.subtotal_cad);
+
+  if (subtotalCad === null) return;
+
+  const totalCad = subtotalCad + Number(existing.shipping_fee_cad);
+  const pricingReviewOpen = orderHasOpenPricingReview(existing);
+
+  const updatePayload: {
+    tracking_number: string | null;
+    fulfillment_status: FulfillmentStatus;
+    payment_status: PaymentStatus;
+    subtotal_cad: number;
+    total_cad: number;
+    pricing_review_resolved_at?: string;
+  } = {
+    tracking_number: trackingNumber,
+    fulfillment_status: fulfillmentStatus,
+    payment_status: paymentStatus,
+    subtotal_cad: subtotalCad,
+    total_cad: totalCad,
+  };
+
+  if (pricingReviewOpen && resolvePricingReview) {
+    updatePayload.pricing_review_resolved_at = new Date().toISOString();
+  }
+
+  await supabase.from("orders").update(updatePayload).eq("id", orderId);
 
   if (fulfillmentStatus === "shipped" || fulfillmentStatus === "completed") {
     const { data: items } = await supabase
@@ -63,4 +102,7 @@ export async function updateOrder(formData: FormData) {
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/account/orders");
+  if (existing.order_number) {
+    revalidatePath(`/account/orders/${existing.order_number}`);
+  }
 }
