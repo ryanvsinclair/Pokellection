@@ -7,23 +7,29 @@ import type { CollectrRoleUrls } from "@/lib/collectr-settings";
 const FIELDS: { key: keyof CollectrRoleUrls; label: string; hint: string }[] = [
   {
     key: "main",
-    label: "Main (English inventory)",
-    hint: "Source of truth for core shop sync — cards here are for sale.",
+    label: "Main (English)",
+    hint: "English inventory — sync sets language to English.",
   },
   {
     key: "newPurchases",
     label: "New purchases (temp holding)",
-    hint: "Staging only — use acquisition import, not showcase sync.",
+    hint:
+      "Use the full Share link with ?collection=… (non-main collections). Acquisition import only — not showcase sync.",
   },
   {
     key: "french",
     label: "French",
-    hint: "French inventory track — included in showcase sync.",
+    hint: "French showcase — sync sets language to French.",
   },
   {
-    key: "japaneseKorean",
-    label: "Japanese / Korean",
-    hint: "JP/KR inventory track — included in showcase sync.",
+    key: "japanese",
+    label: "Japanese",
+    hint: "Japanese showcase — sync sets language to Japanese.",
+  },
+  {
+    key: "korean",
+    label: "Korean",
+    hint: "Korean showcase — sync sets language to Korean.",
   },
 ];
 
@@ -62,8 +68,8 @@ export function CollectrLinksForm({ initialUrls }: Props) {
       <div>
         <h3 className="text-base font-semibold">Collectr links</h3>
         <p className="mt-1 text-sm text-muted">
-          Four showcase roles: main, temp new purchases, French, and Japanese/Korean. Sync
-          uses main + language showcases only.
+          Main, temp new purchases, French, Japanese, and Korean. Showcase sync sets each
+          card&apos;s language from the collection you sync.
         </p>
       </div>
 

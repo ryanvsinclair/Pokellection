@@ -50,6 +50,7 @@ export function CsvImportForm() {
       tags: row.tags ? row.tags.split("|").filter(Boolean) : [],
       photo_paths: [] as string[],
       featured: false,
+      language: "english" as const,
     }));
 
     const { error } = await supabase.from("cards").insert(inserts);

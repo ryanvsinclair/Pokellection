@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import type { CollectrPortfolioItem } from "@/lib/collectr";
 import { scrapeCollectrPortfolioFromBrowser } from "@/lib/collectr-client";
+import { formatCollectrListingLabel } from "@/lib/collectr-card-import";
 import { formatCad } from "@/lib/utils";
 
 interface MergePreview {
   item: CollectrPortfolioItem;
   cardId: string;
-  title: string;
+  scrapedLabel: string;
+  existingLabel: string;
   currentQuantity: number;
   addQuantity: number;
   newQuantity: number;
@@ -19,6 +21,7 @@ interface PreviewPayload {
   totalCards: number | null;
   newCount: number;
   mergeCount: number;
+  matchNote?: string;
   toAdd: CollectrPortfolioItem[];
   toMerge: MergePreview[];
   scraped: CollectrPortfolioItem[];
@@ -174,23 +177,36 @@ export function AcquisitionImportPanel({ newPurchasesUrl }: Props) {
             />
           </div>
 
+          {preview.matchNote && (
+            <p className="text-xs text-muted">{preview.matchNote}</p>
+          )}
+
           {preview.toAdd.length > 0 && (
             <PreviewList
               title="New cards to add"
               items={preview.toAdd.map(
                 (item) =>
-                  `${item.title} ×${item.quantity} · ${formatCad(item.marketPriceCad)} market`,
+                  `${formatCollectrListingLabel({
+                    title: item.title,
+                    setName: item.setName,
+                    cardNumber: item.cardNumber,
+                    printing: item.productSubType,
+                    condition: item.condition,
+                  })} ×${item.quantity} · ${formatCad(item.marketPriceCad)}`,
               )}
             />
           )}
 
           {preview.toMerge.length > 0 && (
             <PreviewList
-              title="Increase quantity (already in inventory)"
-              items={preview.toMerge.map(
-                (row) =>
-                  `${row.title}: ${row.currentQuantity} → ${row.newQuantity} (+${row.addQuantity})`,
-              )}
+              title="Increase quantity (matched existing site listing)"
+              items={preview.toMerge.map((row) => {
+                const sameLabel = row.scrapedLabel === row.existingLabel;
+                const detail = sameLabel
+                  ? row.scrapedLabel
+                  : `Temp: ${row.scrapedLabel} ↔ Site: ${row.existingLabel}`;
+                return `${detail} — qty ${row.currentQuantity} → ${row.newQuantity} (+${row.addQuantity} from temp)`;
+              })}
             />
           )}
 

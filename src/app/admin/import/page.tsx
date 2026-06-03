@@ -14,7 +14,7 @@ export default async function ImportPage() {
   const { data: settings } = await supabase
     .from("site_settings")
     .select(
-      "collectr_main_url, collectr_new_purchases_url, collectr_french_url, collectr_japanese_korean_url, collectr_portfolios",
+      "collectr_main_url, collectr_new_purchases_url, collectr_french_url, collectr_japanese_url, collectr_korean_url, collectr_japanese_korean_url, collectr_portfolios",
     )
     .eq("id", 1)
     .maybeSingle();

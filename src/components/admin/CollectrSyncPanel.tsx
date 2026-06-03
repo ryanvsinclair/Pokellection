@@ -27,7 +27,9 @@ interface PreviewPayload {
   scraped: CollectrPortfolioItem[];
   showcaseProfileIds: string[];
   syncLabel?: string;
-  portfolioSources?: { label: string; count: number }[];
+  portfolioSources?: { label: string; count: number; language?: string }[];
+  itemLanguages?: Record<string, string>;
+  itemShowcaseScopeIds?: Record<string, string>;
 }
 
 interface Props {
@@ -88,6 +90,8 @@ export function CollectrSyncPanel({ syncPortfolios }: Props) {
           items: scrapeResult.items,
           totalCards: scrapeResult.totalCards,
           showcaseProfileIds: scrapeResult.showcaseProfileIds,
+          itemLanguages: scrapeResult.syncMetadata.languages,
+          itemShowcaseScopeIds: scrapeResult.syncMetadata.showcaseScopeIds,
         }),
       });
 
@@ -102,6 +106,8 @@ export function CollectrSyncPanel({ syncPortfolios }: Props) {
         showcaseProfileIds: scrapeResult.showcaseProfileIds,
         syncLabel,
         portfolioSources: scrapeResult.sources,
+        itemLanguages: scrapeResult.syncMetadata.languages,
+        itemShowcaseScopeIds: scrapeResult.syncMetadata.showcaseScopeIds,
       });
     } catch (err) {
       setError(
@@ -126,6 +132,8 @@ export function CollectrSyncPanel({ syncPortfolios }: Props) {
       body: JSON.stringify({
         scraped: preview.scraped,
         showcaseProfileIds: preview.showcaseProfileIds,
+        itemLanguages: preview.itemLanguages,
+        itemShowcaseScopeIds: preview.itemShowcaseScopeIds,
       }),
     });
 
@@ -152,7 +160,7 @@ export function CollectrSyncPanel({ syncPortfolios }: Props) {
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h3 className="text-base font-semibold">Sync showcases</h3>
         <p className="text-sm text-muted">
-          Save at least one sync showcase (main, French, or Japanese/Korean) in Collectr links
+          Save at least one sync showcase in Collectr links (main, French, Japanese, or Korean)
           above. New purchases is not included in sync.
         </p>
       </section>
@@ -164,7 +172,8 @@ export function CollectrSyncPanel({ syncPortfolios }: Props) {
       <div>
         <h3 className="text-base font-semibold">Sync showcases</h3>
         <p className="mt-1 text-sm text-muted">
-          Main + French + Japanese/Korean only. Collectr decides what is for sale: in showcase →
+          Main (English), French, Japanese, and Korean showcases. Cards get the matching
+          language on sync. Collectr decides what is for sale: in showcase →
           listed; missing → delisted (draft). Sold history stays on{" "}
           <a href="/admin/sales" className="font-medium text-primary underline">
             Sales

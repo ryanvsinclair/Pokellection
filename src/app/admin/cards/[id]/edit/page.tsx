@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { saveCardEdits } from "@/app/admin/cards/actions";
+import { CARD_LANGUAGES, formatCardLanguage } from "@/lib/card-language";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
@@ -94,6 +95,21 @@ export default async function EditCardPage({ params }: Props) {
             defaultValue={card.rarity ?? ""}
             className="w-full rounded-lg border border-border px-3 py-2"
           />
+        </label>
+
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium">Language</span>
+          <select
+            name="language"
+            defaultValue={card.language}
+            className="w-full rounded-lg border border-border px-3 py-2"
+          >
+            {CARD_LANGUAGES.map((language) => (
+              <option key={language} value={language}>
+                {formatCardLanguage(language)}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="block space-y-1 text-sm">

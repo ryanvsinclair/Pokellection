@@ -83,7 +83,7 @@ function buildCollectrQuery(params: Record<string, string | number | undefined |
     .join("&");
 }
 
-function collectrFetchHeaders(profileUrl: string, accept: string): HeadersInit {
+export function collectrFetchHeaders(profileUrl: string, accept: string): HeadersInit {
   return {
     "user-agent":
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -93,14 +93,43 @@ function collectrFetchHeaders(profileUrl: string, accept: string): HeadersInit {
   };
 }
 
+export interface CollectrShowcaseTarget {
+  profileId: string;
+  /** Non-main Collectr collection from `?collection=<uuid>` (API query param `id`). */
+  collectionId: string | null;
+}
+
 export function parseProfileIdFromUrl(profileUrl: string): string {
-  const url = new URL(profileUrl);
-  const segment = decodeURIComponent(url.pathname.replace(/\/+$/, "")).split("/").pop() ?? "";
-  const profileId = segment.replace(/^@/, "").trim();
+  return parseCollectrShowcaseTarget(profileUrl).profileId;
+}
+
+export function parseCollectrShowcaseTarget(profileUrl: string): CollectrShowcaseTarget {
+  const trimmed = profileUrl.trim();
+  const url = new URL(trimmed);
+  const parts = decodeURIComponent(url.pathname.replace(/\/+$/, ""))
+    .split("/")
+    .filter(Boolean);
+
+  const profileIndex = parts.findIndex((part) => part === "profile");
+  const handle =
+    profileIndex >= 0 && parts[profileIndex + 1]
+      ? parts[profileIndex + 1]
+      : (parts.at(-1) ?? "");
+
+  const profileId = handle.replace(/^@/, "").trim();
   if (!profileId) {
-    throw new Error("Invalid Collectr profile URL.");
+    throw new Error(
+      "Invalid Collectr profile URL. Use the showcase link from Share (e.g. …/showcase/profile/@username).",
+    );
   }
-  return profileId;
+
+  const collectionId = url.searchParams.get("collection")?.trim() || null;
+  return { profileId, collectionId };
+}
+
+/** Delist/sync scope id: collection UUID when present, otherwise profile handle. */
+export function showcaseScopeIdFromTarget(target: CollectrShowcaseTarget): string {
+  return target.collectionId ?? target.profileId;
 }
 
 function buildCollectrTitle(name: string, gradeCompany: string | null): string {
@@ -135,12 +164,16 @@ function mapRawProduct(row: CollectrRawItem): CollectrPortfolioItem | null {
   };
 }
 
-export function buildShowcaseUrl(profileId: string, offset: number): string {
+export function buildShowcaseUrl(
+  profileId: string,
+  offset: number,
+  collectionId?: string | null,
+): string {
   const query = buildCollectrQuery({
     searchString: "",
     offset,
     limit: COLLECTR_PAGE_SIZE,
-    id: "",
+    id: collectionId ?? "",
     sortType: "",
     sortOrder: "",
     groupId: "",
@@ -226,11 +259,11 @@ export function parseCollectrPortfolio(html: string): CollectrPortfolioItem[] {
 }
 
 async function fetchShowcasePage(
-  profileId: string,
+  target: CollectrShowcaseTarget,
   offset: number,
   profileUrl: string,
 ): Promise<CollectrShowcasePage> {
-  const url = buildShowcaseUrl(profileId, offset);
+  const url = buildShowcaseUrl(target.profileId, offset, target.collectionId);
 
   const response = await fetch(url, {
     headers: collectrFetchHeaders(profileUrl, "application/json, text/plain, */*"),
@@ -245,7 +278,7 @@ async function fetchShowcasePage(
 }
 
 async function fetchAllShowcaseProductsViaApi(
-  profileId: string,
+  target: CollectrShowcaseTarget,
   profileUrl: string,
 ): Promise<CollectrScrapeResult> {
   const allProducts: CollectrRawItem[] = [];
@@ -253,7 +286,7 @@ async function fetchAllShowcaseProductsViaApi(
   let totalCards: number | null = null;
 
   while (true) {
-    const page = await fetchShowcasePage(profileId, offset, profileUrl);
+    const page = await fetchShowcasePage(target, offset, profileUrl);
     if (totalCards === null && page.total_cards) {
       const parsedTotal = Number.parseInt(page.total_cards, 10);
       totalCards = Number.isFinite(parsedTotal) ? parsedTotal : null;
@@ -290,10 +323,10 @@ async function fetchProfileHtml(profileUrl: string): Promise<string> {
 
 export async function scrapeCollectrPortfolio(profileUrl: string): Promise<CollectrScrapeResult> {
   const trimmedUrl = profileUrl.trim();
-  const profileId = parseProfileIdFromUrl(trimmedUrl);
+  const target = parseCollectrShowcaseTarget(trimmedUrl);
 
   try {
-    return await fetchAllShowcaseProductsViaApi(profileId, trimmedUrl);
+    return await fetchAllShowcaseProductsViaApi(target, trimmedUrl);
   } catch (apiError) {
     const apiMessage = apiError instanceof Error ? apiError.message : "Collectr API request failed";
 

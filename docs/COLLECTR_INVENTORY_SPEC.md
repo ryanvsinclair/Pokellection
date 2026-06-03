@@ -30,7 +30,8 @@ The website must support **multiple Collectr showcases with different roles**, p
 ## 2. Collectr link fields (admin configuration)
 
 Replace the single “list of equivalent portfolios” model with **named roles**.
-Each role has one Collectr showcase URL (profile link).
+Each role has one Collectr showcase URL (profile link). Non-main Collectr
+collections use the same profile URL with `?collection=<uuid>` from Share.
 
 ### 2.1 Main — source of truth for English / primary available inventory
 

@@ -1,5 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
+import { CardLanguageBadge } from "@/components/CardLanguageBadge";
+import { CardListingGallery } from "@/components/CardListingGallery";
 import { notFound, redirect } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { SignUpToBuy } from "@/components/SignUpToBuy";
@@ -8,7 +9,7 @@ import { getAvailableCardBySlug } from "@/lib/queries/cards";
 import { getPublishedCollectionSlugForCard } from "@/lib/queries/collections";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { createClient } from "@/lib/supabase/server";
-import { formatCad, getPhotoUrl } from "@/lib/utils";
+import { formatCad } from "@/lib/utils";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -57,31 +58,17 @@ export default async function CardDetailPage({ params }: Props) {
   const canPurchase = await canPurchaseAsBuyer(supabase, user?.id);
   const purchaseReturn = `/shop/${card.slug}`;
 
-  const photo = card.photo_paths[0];
-
   return (
     <div className="grid gap-8 md:grid-cols-2">
-      <div className="aspect-[3/4] overflow-hidden rounded-xl border border-border bg-surface-strong">
-        {photo ? (
-          <Image
-            src={getPhotoUrl(photo)}
-            alt={card.title}
-            width={600}
-            height={800}
-            className="h-full w-full object-cover"
-            priority
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted">
-            No photo
-          </div>
-        )}
-      </div>
+      <CardListingGallery photos={card.photo_paths ?? []} title={card.title} />
 
       <div className="space-y-5">
         <div>
           <p className="text-sm text-muted">{card.set_name}</p>
-          <h1 className="text-2xl font-bold">{card.title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold">{card.title}</h1>
+            <CardLanguageBadge language={card.language} className="text-xs" />
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 text-sm">

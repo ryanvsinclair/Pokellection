@@ -30,8 +30,11 @@ const SORT_OPTIONS: { value: ShopSort; label: string }[] = [
   { value: "oldest", label: "Oldest" },
 ];
 
+const inputClassName =
+  "rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none ring-primary/30 placeholder:text-muted focus:ring-2";
+
 const selectClassName =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/30 focus:ring-2";
+  "rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2";
 
 const labelClassName = "text-xs font-semibold uppercase tracking-wide text-muted";
 
@@ -43,6 +46,7 @@ export function ShopBrowser({
 }: Props) {
   const [filters, setFilters] = useState<ShopFilters>(DEFAULT_SHOP_FILTERS);
   const [sort, setSort] = useState<ShopSort>(DEFAULT_SHOP_SORT);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const listingCards = useMemo(() => {
     const availableIds = new Set(cards.map((c) => c.id));
@@ -58,11 +62,11 @@ export function ShopBrowser({
     return [...soldOnly, ...filteredAvailable];
   }, [cards, justSoldCards, filters, sort]);
 
+  const hasAdvancedFilters =
+    filters.condition !== "all" || filters.setName !== "" || filters.printing !== "";
+
   const hasActiveFilters =
-    filters.query.trim() !== "" ||
-    filters.condition !== "all" ||
-    filters.setName !== "" ||
-    filters.printing !== "";
+    filters.query.trim() !== "" || hasAdvancedFilters;
 
   function updateFilters(patch: Partial<ShopFilters>) {
     setFilters((current) => ({ ...current, ...patch }));
@@ -72,103 +76,159 @@ export function ShopBrowser({
     setFilters(DEFAULT_SHOP_FILTERS);
   }
 
+  function clearAdvancedFilters() {
+    setFilters((current) => ({
+      ...current,
+      condition: "all",
+      setName: "",
+      printing: "",
+    }));
+  }
+
   return (
     <div className="space-y-4">
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-        <label className="block">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        <label className="block min-w-0 flex-1">
           <span className="sr-only">Search cards</span>
           <input
             type="search"
             value={filters.query}
             onChange={(event) => updateFilters({ query: event.target.value })}
             placeholder="Search by name, set, number, rarity, or printing…"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none ring-primary/30 placeholder:text-muted focus:ring-2"
+            className={`${inputClassName} w-full`}
           />
         </label>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1.5">
-            <span className={labelClassName}>Sort</span>
-            <select
-              value={sort}
-              onChange={(event) => setSort(event.target.value as ShopSort)}
-              className={selectClassName}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <label className="block shrink-0 sm:w-52">
+          <span className="sr-only">Sort</span>
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as ShopSort)}
+            className={`${selectClassName} w-full`}
+            aria-label="Sort cards"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <label className="block space-y-1.5">
-            <span className={labelClassName}>Condition</span>
-            <select
-              value={filters.condition}
-              onChange={(event) =>
-                updateFilters({
-                  condition: event.target.value as ShopFilters["condition"],
-                })
-              }
-              className={selectClassName}
-            >
-              <option value="all">All conditions</option>
-              {CARD_CONDITIONS.map((condition) => (
-                <option key={condition} value={condition}>
-                  {formatCondition(condition)}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((open) => !open)}
+            aria-expanded={advancedOpen}
+            aria-controls="shop-advanced-filters"
+            className={`flex h-full w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
+              advancedOpen || hasAdvancedFilters
+                ? "border-primary/50 bg-surface text-foreground"
+                : "border-border bg-background text-foreground hover:bg-surface"
+            }`}
+          >
+            <span className="hidden sm:inline">Advanced </span>filters
+            {hasAdvancedFilters && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
+                On
+              </span>
+            )}
+          </button>
 
-          <label className="block space-y-1.5">
-            <span className={labelClassName}>Set</span>
-            <select
-              value={filters.setName}
-              onChange={(event) => updateFilters({ setName: event.target.value })}
-              className={selectClassName}
-            >
-              <option value="">All sets</option>
-              {sets.map((setName) => (
-                <option key={setName} value={setName}>
-                  {setName}
-                </option>
-              ))}
-            </select>
-          </label>
+          {advancedOpen && (
+            <>
+              <button
+                type="button"
+                aria-label="Close filters"
+                className="fixed inset-0 z-10 cursor-default bg-black/20 sm:bg-transparent"
+                onClick={() => setAdvancedOpen(false)}
+              />
+              <div
+                id="shop-advanced-filters"
+                className="absolute right-0 z-20 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-border bg-card p-4 shadow-lg sm:w-72"
+              >
+                <div className="space-y-3">
+                  <label className="block space-y-1.5">
+                    <span className={labelClassName}>Condition</span>
+                    <select
+                      value={filters.condition}
+                      onChange={(event) =>
+                        updateFilters({
+                          condition: event.target.value as ShopFilters["condition"],
+                        })
+                      }
+                      className={`${selectClassName} w-full`}
+                    >
+                      <option value="all">All conditions</option>
+                      {CARD_CONDITIONS.map((condition) => (
+                        <option key={condition} value={condition}>
+                          {formatCondition(condition)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-          <label className="block space-y-1.5">
-            <span className={labelClassName}>Printing</span>
-            <select
-              value={filters.printing}
-              onChange={(event) => updateFilters({ printing: event.target.value })}
-              className={selectClassName}
-            >
-              <option value="">All printings</option>
-              {printings.map((printing) => (
-                <option key={printing} value={printing}>
-                  {printing}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+                  <label className="block space-y-1.5">
+                    <span className={labelClassName}>Set</span>
+                    <select
+                      value={filters.setName}
+                      onChange={(event) => updateFilters({ setName: event.target.value })}
+                      className={`${selectClassName} w-full`}
+                    >
+                      <option value="">All sets</option>
+                      {sets.map((setName) => (
+                        <option key={setName} value={setName}>
+                          {setName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <p className="text-muted">
-            Showing {visibleCards.length} of {listingCards.length} cards
-          </p>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-            >
-              Clear filters
-            </button>
+                  <label className="block space-y-1.5">
+                    <span className={labelClassName}>Printing</span>
+                    <select
+                      value={filters.printing}
+                      onChange={(event) => updateFilters({ printing: event.target.value })}
+                      className={`${selectClassName} w-full`}
+                    >
+                      <option value="">All printings</option>
+                      {printings.map((printing) => (
+                        <option key={printing} value={printing}>
+                          {printing}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {hasAdvancedFilters && (
+                  <button
+                    type="button"
+                    onClick={clearAdvancedFilters}
+                    className="mt-3 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    Clear advanced filters
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <p className="text-muted">
+          Showing {visibleCards.length} of {listingCards.length} cards
+        </p>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       <CardGrid

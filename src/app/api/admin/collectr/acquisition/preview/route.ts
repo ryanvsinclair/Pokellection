@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { assertManager } from "@/lib/admin-auth";
 import { collectrIdentity, type CollectrPortfolioItem } from "@/lib/collectr";
-import { buildExistingCollectrMap } from "@/lib/collectr-card-import";
+import {
+  buildExistingCollectrMap,
+  findExistingForAcquisition,
+  formatCollectrListingLabel,
+} from "@/lib/collectr-card-import";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -23,27 +27,53 @@ export async function POST(request: Request) {
 
     const { data: cards, error } = await supabase
       .from("cards")
-      .select("id,title,status,tags,quantity");
+      .select("id,title,status,tags,quantity,set_name,card_number,printing,condition");
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     const existingMap = buildExistingCollectrMap(cards ?? []);
 
-    const toAdd = scraped.filter((item) => !existingMap.has(collectrIdentity(item)));
-    const toMerge = scraped
-      .filter((item) => existingMap.has(collectrIdentity(item)))
-      .map((item) => {
-        const existing = existingMap.get(collectrIdentity(item))!;
-        return {
-          item,
-          cardId: existing.id,
-          title: existing.tags.length ? item.title : item.title,
-          currentQuantity: existing.quantity,
-          addQuantity: item.quantity,
-          newQuantity: existing.quantity + item.quantity,
-        };
+    const toAdd: CollectrPortfolioItem[] = [];
+    const toMerge: {
+      item: CollectrPortfolioItem;
+      cardId: string;
+      scrapedLabel: string;
+      existingLabel: string;
+      currentQuantity: number;
+      addQuantity: number;
+      newQuantity: number;
+    }[] = [];
+
+    for (const item of scraped) {
+      const existing = findExistingForAcquisition(item, existingMap);
+      if (!existing) {
+        toAdd.push(item);
+        continue;
+      }
+
+      toMerge.push({
+        item,
+        cardId: existing.id,
+        scrapedLabel: formatCollectrListingLabel({
+          title: item.title,
+          setName: item.setName,
+          cardNumber: item.cardNumber,
+          printing: item.productSubType,
+          condition: item.condition,
+        }),
+        existingLabel: formatCollectrListingLabel({
+          title: existing.title,
+          setName: existing.set_name,
+          cardNumber: existing.card_number,
+          printing: existing.printing,
+          condition: existing.condition,
+        }),
+        currentQuantity: existing.quantity,
+        addQuantity: item.quantity,
+        newQuantity: existing.quantity + item.quantity,
       });
+    }
 
     return NextResponse.json({
       scrapedCount: scraped.length,
@@ -53,6 +83,9 @@ export async function POST(request: Request) {
       toAdd,
       toMerge,
       scraped,
+      matchNote:
+        "Qty bumps match by Collectr catalog ID (product + condition + printing + grade), not name alone. " +
+        "Set and card number must also match when both are on file. Cards already on the site from main sync count as existing.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Acquisition preview failed.";

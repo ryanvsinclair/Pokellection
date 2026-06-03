@@ -22,6 +22,7 @@ export type Database = {
           description: string | null
           featured: boolean
           id: string
+          language: Database["public"]["Enums"]["card_language"]
           photo_paths: string[]
           price_cad: number
           printing: string | null
@@ -42,6 +43,7 @@ export type Database = {
           description?: string | null
           featured?: boolean
           id?: string
+          language?: Database["public"]["Enums"]["card_language"]
           photo_paths?: string[]
           price_cad: number
           printing?: string | null
@@ -62,6 +64,7 @@ export type Database = {
           description?: string | null
           featured?: boolean
           id?: string
+          language?: Database["public"]["Enums"]["card_language"]
           photo_paths?: string[]
           price_cad?: number
           printing?: string | null
@@ -521,6 +524,8 @@ export type Database = {
         Row: {
           collectr_french_url: string
           collectr_japanese_korean_url: string
+          collectr_japanese_url: string
+          collectr_korean_url: string
           collectr_main_url: string
           collectr_new_purchases_url: string
           collectr_portfolios: Json
@@ -537,6 +542,8 @@ export type Database = {
         Insert: {
           collectr_french_url?: string
           collectr_japanese_korean_url?: string
+          collectr_japanese_url?: string
+          collectr_korean_url?: string
           collectr_main_url?: string
           collectr_new_purchases_url?: string
           collectr_portfolios?: Json
@@ -553,6 +560,8 @@ export type Database = {
         Update: {
           collectr_french_url?: string
           collectr_japanese_korean_url?: string
+          collectr_japanese_url?: string
+          collectr_korean_url?: string
           collectr_main_url?: string
           collectr_new_purchases_url?: string
           collectr_portfolios?: Json
@@ -577,6 +586,7 @@ export type Database = {
     }
     Enums: {
       card_condition: "NM" | "LP" | "MP" | "HP" | "DMG"
+      card_language: "english" | "french" | "japanese" | "korean"
       card_status: "available" | "reserved" | "sold" | "draft"
       collection_status: "draft" | "available" | "sold"
       fulfillment_status:
@@ -728,6 +738,7 @@ export const Constants = {
   public: {
     Enums: {
       card_condition: ["NM", "LP", "MP", "HP", "DMG"],
+      card_language: ["english", "french", "japanese", "korean"],
       card_status: ["available", "reserved", "sold", "draft"],
       collection_status: ["draft", "available", "sold"],
       fulfillment_status: [

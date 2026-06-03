@@ -4,6 +4,7 @@ export type { Database } from "@/types/supabase";
 
 export type UserRole = Enums<"user_role">;
 export type CardCondition = Enums<"card_condition">;
+export type CardLanguage = Enums<"card_language">;
 export type CardStatus = Enums<"card_status">;
 export type CollectionStatus = Enums<"collection_status">;
 export type ReservationStatus = Enums<"reservation_status">;

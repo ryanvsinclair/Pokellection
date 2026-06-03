@@ -7,7 +7,8 @@ import {
 } from "@/lib/collectr";
 import { soldAtForStatus } from "@/lib/card-sold";
 import { roundPriceCad } from "@/lib/currency";
-import type { CardStatus } from "@/types/database";
+import { DEFAULT_CARD_LANGUAGE } from "@/lib/card-language";
+import type { CardLanguage, CardStatus } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
@@ -15,9 +16,77 @@ type Client = SupabaseClient<Database>;
 
 export interface ExistingCollectrCard {
   id: string;
+  title: string;
   tags: string[];
   status: CardStatus;
   quantity: number;
+  set_name: string | null;
+  card_number: string | null;
+  printing: string | null;
+  condition: string;
+}
+
+function normalizeCardField(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function listingStatusRank(status: CardStatus): number {
+  if (status === "available") return 4;
+  if (status === "reserved") return 3;
+  if (status === "draft") return 2;
+  if (status === "sold") return 1;
+  return 0;
+}
+
+/** Human-readable line for preview (set, number, printing, condition). */
+export function formatCollectrListingLabel(
+  parts: {
+    title: string;
+    setName?: string | null;
+    cardNumber?: string | null;
+    printing?: string | null;
+    condition?: string | null;
+  },
+): string {
+  const meta: string[] = [];
+  if (parts.setName?.trim()) meta.push(parts.setName.trim());
+  if (parts.cardNumber?.trim()) meta.push(`#${parts.cardNumber.trim()}`);
+  if (parts.printing?.trim()) meta.push(parts.printing.trim());
+  if (parts.condition?.trim()) meta.push(parts.condition.trim());
+  return meta.length > 0 ? `${parts.title} (${meta.join(" · ")})` : parts.title;
+}
+
+/**
+ * Collectr catalog identity (product + condition + printing + grade), not title or card number alone.
+ * When both sides have set/card number stored, they must agree or we treat as a new listing.
+ */
+export function acquisitionMatchesExisting(
+  item: CollectrPortfolioItem,
+  existing: ExistingCollectrCard,
+): boolean {
+  if (parseCollectrIdentityFromTags(existing.tags) !== collectrIdentity(item)) {
+    return false;
+  }
+  if (item.cardNumber && existing.card_number) {
+    if (normalizeCardField(item.cardNumber) !== normalizeCardField(existing.card_number)) {
+      return false;
+    }
+  }
+  if (item.setName && existing.set_name) {
+    if (normalizeCardField(item.setName) !== normalizeCardField(existing.set_name)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function findExistingForAcquisition(
+  item: CollectrPortfolioItem,
+  map: Map<string, ExistingCollectrCard>,
+): ExistingCollectrCard | null {
+  const candidate = map.get(collectrIdentity(item));
+  if (!candidate) return null;
+  return acquisitionMatchesExisting(item, candidate) ? candidate : null;
 }
 
 export function parseCollectrIdentityFromTags(tags: string[] | null): string | null {
@@ -27,18 +96,45 @@ export function parseCollectrIdentityFromTags(tags: string[] | null): string | n
 }
 
 export function buildExistingCollectrMap(
-  cards: { id: string; tags: string[] | null; status: CardStatus; quantity: number }[],
+  cards: {
+    id: string;
+    title?: string;
+    tags: string[] | null;
+    status: CardStatus;
+    quantity: number;
+    set_name?: string | null;
+    card_number?: string | null;
+    printing?: string | null;
+    condition?: string;
+  }[],
 ): Map<string, ExistingCollectrCard> {
   const map = new Map<string, ExistingCollectrCard>();
   for (const card of cards) {
     const identity = parseCollectrIdentityFromTags(card.tags);
     if (!identity) continue;
-    map.set(identity, {
+
+    const row: ExistingCollectrCard = {
       id: card.id,
+      title: card.title ?? "",
       tags: card.tags ?? [],
       status: card.status,
       quantity: card.quantity,
-    });
+      set_name: card.set_name ?? null,
+      card_number: card.card_number ?? null,
+      printing: card.printing ?? null,
+      condition: card.condition ?? "NM",
+    };
+
+    const existing = map.get(identity);
+    if (!existing) {
+      map.set(identity, row);
+      continue;
+    }
+
+    existing.quantity += card.quantity;
+    if (listingStatusRank(row.status) > listingStatusRank(existing.status)) {
+      map.set(identity, { ...row, quantity: existing.quantity });
+    }
   }
   return map;
 }
@@ -93,6 +189,7 @@ export function cardRowFromCollectrItem(
   photoPath: string | null,
   quantity: number,
   description: string,
+  language: CardLanguage = DEFAULT_CARD_LANGUAGE,
 ) {
   const collectrTag = collectrTagFor(item);
   return {
@@ -106,6 +203,7 @@ export function cardRowFromCollectrItem(
     price_cad: roundPriceCad(item.marketPriceCad),
     quantity,
     status: "available" as const,
+    language,
     description,
     tags: Array.from(new Set(["collectr", collectrTag, ...extraTags])),
     photo_paths: photoPath ? [photoPath] : [],

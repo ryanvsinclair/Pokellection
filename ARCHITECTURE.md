@@ -8,6 +8,18 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Card language from Collectr sync showcase
+
+**Context:** Main = English; French / Japanese / Korean are separate Collectr collection URLs.
+
+**Decision:** `cards.language` enum (`english`, `french`, `japanese`, `korean`). Showcase sync sets
+language from the portfolio config being synced (`syncPortfolioConfigs`). Each scraped
+identity gets one `collectr-showcase:<scopeId>` tag for that showcase (not all scopes at once).
+Site settings: `collectr_japanese_url` + `collectr_korean_url` (legacy `collectr_japanese_korean_url`
+migrated into Japanese on `019`). Shop shows a language badge when not English.
+
+---
+
 ## Collectr roles, acquisition import, language showcases
 
 **Context:** Multiple Collectr URLs serve different jobs (main sync, temp purchases,
@@ -317,6 +329,10 @@ only diffs against the DB and imports — it never fetches Collectr itself.
   `Access-Control-Allow-Origin: *`, so the admin's browser can read it cross-origin.
 - **Gotcha:** the API **404s if empty query params are included** (e.g.
   `searchString=&id=`). `buildShowcaseUrl` must omit empty params.
+- **Non-main Collectr collections** use the same profile URL plus
+  `?collection=<uuid>`; the API filters via query param `id=<uuid>` (not `groupId`).
+  Main showcase omits `id`. Delist scope uses the collection UUID when present
+  (`showcaseScopeIdFromPortfolioUrl`), not the profile handle alone.
 - Pagination is `offset`/`limit=30` until a page returns no products.
 
 ## Collectr listing identity = product + condition + sub_type + grade

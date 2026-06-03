@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { uploadCardPhotoFiles } from "@/lib/card-photos";
 import { createClient } from "@/lib/supabase/client";
 import { roundPriceCad } from "@/lib/currency";
 
@@ -28,20 +29,16 @@ export function CardForm() {
     const slug = `${slugify(title)}-${Date.now()}`;
     const supabase = createClient();
 
-    const photoPaths: string[] = [];
-    for (const file of photos) {
-      const path = `cards/${slug}/${crypto.randomUUID()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("card-photos")
-        .upload(path, file);
-
-      if (uploadError) {
-        setError(uploadError.message);
-        setLoading(false);
-        return;
-      }
-      photoPaths.push(path);
+    const upload =
+      photos.length > 0
+        ? await uploadCardPhotoFiles(supabase, slug, photos)
+        : { paths: [] as string[] };
+    if ("error" in upload) {
+      setError(upload.error);
+      setLoading(false);
+      return;
     }
+    const photoPaths = upload.paths;
 
     const { error: insertError } = await supabase.from("cards").insert({
       title,
@@ -57,6 +54,7 @@ export function CardForm() {
       tags: [],
       photo_paths: photoPaths,
       featured: false,
+      language: "english",
     });
 
     if (insertError) {

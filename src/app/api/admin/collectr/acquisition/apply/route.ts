@@ -6,6 +6,7 @@ import { collectrIdentity, type CollectrPortfolioItem } from "@/lib/collectr";
 import {
   buildExistingCollectrMap,
   cardRowFromCollectrItem,
+  findExistingForAcquisition,
   patchWhenListedInCollectr,
   uploadCollectrPhoto,
 } from "@/lib/collectr-card-import";
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
 
     const { data: cards, error: cardsError } = await supabase
       .from("cards")
-      .select("id,tags,status,quantity");
+      .select("id,title,tags,status,quantity,set_name,card_number,printing,condition");
     if (cardsError) {
       return NextResponse.json({ error: cardsError.message }, { status: 400 });
     }
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
 
     for (const item of scraped) {
       const identity = collectrIdentity(item);
-      const existing = existingMap.get(identity);
+      const existing = findExistingForAcquisition(item, existingMap);
 
       if (!existing) {
         const photoPath = await uploadCollectrPhoto(supabase, item);
@@ -94,9 +95,14 @@ export async function POST(request: Request) {
           });
           existingMap.set(identity, {
             id: inserted.id,
+            title: item.title,
             tags: ["collectr", acqTag],
             status: "available",
             quantity: item.quantity,
+            set_name: item.setName,
+            card_number: item.cardNumber,
+            printing: item.productSubType,
+            condition: item.condition,
           });
         }
         continue;

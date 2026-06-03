@@ -27,13 +27,7 @@ export async function saveCollectrLinks(
       return { ok: false, error: "Main Collectr URL is not a valid showcase link." };
     }
 
-    const portfolios = normalizeCollectrPortfolios(
-      syncConfigs.map((config) => ({
-        id: config.id,
-        label: config.label,
-        url: config.url,
-      })),
-    );
+    const portfolios = normalizeCollectrPortfolios(syncConfigs);
 
     const { error } = await supabase
       .from("site_settings")
@@ -41,7 +35,9 @@ export async function saveCollectrLinks(
         collectr_main_url: urls.main.trim(),
         collectr_new_purchases_url: urls.newPurchases.trim(),
         collectr_french_url: urls.french.trim(),
-        collectr_japanese_korean_url: urls.japaneseKorean.trim(),
+        collectr_japanese_url: urls.japanese.trim(),
+        collectr_korean_url: urls.korean.trim(),
+        collectr_japanese_korean_url: urls.japanese.trim(),
         collectr_portfolios: portfolios as unknown as Json,
       })
       .eq("id", 1);
@@ -62,7 +58,7 @@ export async function loadCollectrRoleUrls(): Promise<CollectrRoleUrls> {
   const { data } = await supabase
     .from("site_settings")
     .select(
-      "collectr_main_url, collectr_new_purchases_url, collectr_french_url, collectr_japanese_korean_url, collectr_portfolios",
+      "collectr_main_url, collectr_new_purchases_url, collectr_french_url, collectr_japanese_url, collectr_korean_url, collectr_japanese_korean_url, collectr_portfolios",
     )
     .eq("id", 1)
     .maybeSingle();

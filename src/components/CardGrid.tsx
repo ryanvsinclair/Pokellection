@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Card } from "@/types/database";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { CardLanguageBadge } from "@/components/CardLanguageBadge";
 import { isJustSoldCard } from "@/lib/card-sold";
 import { formatCad, formatCondition, getPhotoUrl } from "@/lib/utils";
 
@@ -73,13 +74,16 @@ export function CardGrid({
             </Link>
 
             <div className="flex flex-1 flex-col gap-1 p-3">
-              {justSold ? (
-                <h3 className="line-clamp-2 text-sm font-bold leading-snug">{card.title}</h3>
-              ) : (
-                <Link href={`/shop/${card.slug}`} className="hover:underline">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {justSold ? (
                   <h3 className="line-clamp-2 text-sm font-bold leading-snug">{card.title}</h3>
-                </Link>
-              )}
+                ) : (
+                  <Link href={`/shop/${card.slug}`} className="hover:underline">
+                    <h3 className="line-clamp-2 text-sm font-bold leading-snug">{card.title}</h3>
+                  </Link>
+                )}
+                <CardLanguageBadge language={card.language} />
+              </div>
 
               {card.set_name && (
                 <p className="line-clamp-1 text-xs text-muted underline decoration-border underline-offset-2">
