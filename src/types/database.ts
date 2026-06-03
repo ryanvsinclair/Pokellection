@@ -5,6 +5,7 @@ export type { Database } from "@/types/supabase";
 export type UserRole = Enums<"user_role">;
 export type CardCondition = Enums<"card_condition">;
 export type CardStatus = Enums<"card_status">;
+export type CollectionStatus = Enums<"collection_status">;
 export type ReservationStatus = Enums<"reservation_status">;
 export type FulfillmentType = Enums<"fulfillment_type">;
 export type ShippingMethod = Enums<"shipping_method">;
@@ -21,6 +22,8 @@ export type FulfillmentStatus = Enums<"fulfillment_status">;
 
 export type Profile = Tables<"profiles">;
 export type Card = Tables<"cards">;
+export type Collection = Tables<"collections">;
+export type CollectionCard = Tables<"collection_cards">;
 export type SiteSettings = Tables<"site_settings">;
 export type Reservation = Tables<"reservations">;
 export type CartItem = Tables<"cart_items">;

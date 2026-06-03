@@ -4,6 +4,7 @@ import { CheckoutForm } from "@/components/CheckoutForm";
 import { removeFromCart, updateCartQuantity } from "@/app/cart/actions";
 import { getCheckoutOptionAvailability } from "@/lib/checkout-options";
 import { createClient } from "@/lib/supabase/server";
+import { collectionSinglePriceCad } from "@/lib/collection-pricing";
 import { formatCad } from "@/lib/utils";
 
 const CHECKOUT_ERRORS: Record<string, string> = {
@@ -20,7 +21,31 @@ const CHECKOUT_ERRORS: Record<string, string> = {
     "Next-day delivery orders must be placed before 11:00 PM (Ottawa time).",
   same_day_pickup_unavailable:
     "Same-day pickup is only available after 5:00 PM (Ottawa time).",
+  collection_conflict:
+    "Remove collection singles or the full bundle — you cannot checkout both for the same collection.",
+  collection_single_qty: "Cards bought from a collection are limited to one per line.",
 };
+
+type CartLine =
+  | {
+      kind: "card";
+      row: { id: string; quantity: number };
+      card: {
+        id: string;
+        title: string;
+        price_cad: number;
+        status: string;
+        quantity: number;
+      };
+      unitPrice: number;
+      fromCollection: boolean;
+    }
+  | {
+      kind: "collection";
+      row: { id: string; quantity: number };
+      collection: { id: string; title: string; price_cad: number; status: string };
+      cardCount: number;
+    };
 
 export default async function CheckoutPage({
   searchParams,
@@ -38,34 +63,83 @@ export default async function CheckoutPage({
   }
 
   const [{ data: cartRows }, { data: profile }] = await Promise.all([
-    supabase.from("cart_items").select("id, quantity, card_id").eq("user_id", user.id),
+    supabase
+      .from("cart_items")
+      .select("id, quantity, card_id, collection_id, from_collection_id")
+      .eq("user_id", user.id),
     supabase.from("profiles").select("display_name, phone").eq("id", user.id).single(),
   ]);
 
-  const cardIds = (cartRows ?? []).map((row) => row.card_id);
-  const { data: cards } = cardIds.length
-    ? await supabase.from("cards").select("*").in("id", cardIds)
-    : { data: [] };
+  const cardIds = (cartRows ?? [])
+    .map((row) => row.card_id)
+    .filter(Boolean) as string[];
+  const collectionIds = (cartRows ?? [])
+    .map((row) => row.collection_id)
+    .filter(Boolean) as string[];
+
+  const [{ data: cards }, { data: collections }] = await Promise.all([
+    cardIds.length
+      ? supabase.from("cards").select("*").in("id", cardIds)
+      : Promise.resolve({ data: [] }),
+    collectionIds.length
+      ? supabase.from("collections").select("*").in("id", collectionIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const cardMap = new Map((cards ?? []).map((card) => [card.id, card]));
-  const lines = (cartRows ?? [])
-    .map((row) => {
-      const card = cardMap.get(row.card_id);
-      if (!card) return null;
-      return { row, card };
-    })
-    .filter(Boolean) as {
-    row: { id: string; quantity: number };
-    card: { id: string; title: string; price_cad: number; status: string; quantity: number };
-  }[];
+  const collectionMap = new Map((collections ?? []).map((c) => [c.id, c]));
 
-  const subtotal = lines.reduce(
-    (sum, line) => sum + Number(line.card.price_cad) * line.row.quantity,
-    0,
+  const collectionCounts = await Promise.all(
+    collectionIds.map(async (id) => {
+      const { count } = await supabase
+        .from("collection_cards")
+        .select("card_id", { count: "exact", head: true })
+        .eq("collection_id", id);
+      return { id, count: count ?? 0 };
+    }),
+  );
+  const countByCollection = Object.fromEntries(
+    collectionCounts.map((row) => [row.id, row.count]),
   );
 
-  const availability = getCheckoutOptionAvailability();
+  const lines: CartLine[] = (cartRows ?? [])
+    .map((row) => {
+      if (row.collection_id) {
+        const collection = collectionMap.get(row.collection_id);
+        if (!collection) return null;
+        return {
+          kind: "collection" as const,
+          row: { id: row.id, quantity: row.quantity },
+          collection,
+          cardCount: countByCollection[collection.id] ?? 0,
+        };
+      }
+      if (row.card_id) {
+        const card = cardMap.get(row.card_id);
+        if (!card) return null;
+        const fromCollection = Boolean(row.from_collection_id);
+        return {
+          kind: "card" as const,
+          row: { id: row.id, quantity: row.quantity },
+          card,
+          fromCollection,
+          unitPrice: fromCollection
+            ? collectionSinglePriceCad(card.price_cad)
+            : Number(card.price_cad),
+        };
+      }
+      return null;
+    })
+    .filter(Boolean) as CartLine[];
 
+  const subtotal = lines.reduce((sum, line) => {
+    if (line.kind === "card") {
+      return sum + line.unitPrice * line.row.quantity;
+    }
+    return sum + Number(line.collection.price_cad);
+  }, 0);
+
+  const availability = getCheckoutOptionAvailability();
   const errorMessage = error ? CHECKOUT_ERRORS[error] : undefined;
 
   return (
@@ -94,41 +168,73 @@ export default async function CheckoutPage({
       ) : (
         <>
           <ul className="space-y-3">
-            {lines.map(({ row, card }) => (
-              <li
-                key={row.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4"
-              >
-                <div>
-                  <p className="font-medium">{card.title}</p>
-                  <p className="text-sm text-muted">
-                    {formatCad(card.price_cad)} · {card.status} · {card.quantity} in stock
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <form action={updateCartQuantity} className="flex items-center gap-1">
-                    <input type="hidden" name="cart_item_id" value={row.id} />
-                    <input
-                      type="number"
-                      name="quantity"
-                      min={1}
-                      max={card.quantity}
-                      defaultValue={Math.min(row.quantity, card.quantity)}
-                      className="w-16 rounded border border-border px-2 py-1 text-sm"
-                    />
-                    <button type="submit" className="text-xs font-medium text-muted">
-                      Update
-                    </button>
-                  </form>
+            {lines.map((line) =>
+              line.kind === "collection" ? (
+                <li
+                  key={line.row.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4"
+                >
+                  <div>
+                    <p className="text-xs font-medium uppercase text-primary">Collection</p>
+                    <p className="font-medium">{line.collection.title}</p>
+                    <p className="text-sm text-muted">
+                      {formatCad(line.collection.price_cad)} · {line.cardCount} cards ·{" "}
+                      {line.collection.status}
+                    </p>
+                  </div>
                   <form action={removeFromCart}>
-                    <input type="hidden" name="cart_item_id" value={row.id} />
+                    <input type="hidden" name="cart_item_id" value={line.row.id} />
                     <button type="submit" className="text-xs font-medium text-primary">
                       Remove
                     </button>
                   </form>
-                </div>
-              </li>
-            ))}
+                </li>
+              ) : (
+                <li
+                  key={line.row.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4"
+                >
+                  <div>
+                    {line.fromCollection && (
+                      <p className="text-xs font-medium uppercase text-primary">
+                        From collection (+$5)
+                      </p>
+                    )}
+                    <p className="font-medium">{line.card.title}</p>
+                    <p className="text-sm text-muted">
+                      {formatCad(line.unitPrice)}
+                      {line.fromCollection
+                        ? ` · ${line.card.status}`
+                        : ` · ${line.card.status} · ${line.card.quantity} in stock`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!line.fromCollection && (
+                      <form action={updateCartQuantity} className="flex items-center gap-1">
+                        <input type="hidden" name="cart_item_id" value={line.row.id} />
+                        <input
+                          type="number"
+                          name="quantity"
+                          min={1}
+                          max={line.card.quantity}
+                          defaultValue={Math.min(line.row.quantity, line.card.quantity)}
+                          className="w-16 rounded border border-border px-2 py-1 text-sm"
+                        />
+                        <button type="submit" className="text-xs font-medium text-muted">
+                          Update
+                        </button>
+                      </form>
+                    )}
+                    <form action={removeFromCart}>
+                      <input type="hidden" name="cart_item_id" value={line.row.id} />
+                      <button type="submit" className="text-xs font-medium text-primary">
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ),
+            )}
           </ul>
 
           <CheckoutForm

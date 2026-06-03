@@ -28,7 +28,7 @@ export async function getCartQuantitiesByCardId(
 
   const map: Record<string, number> = {};
   for (const row of data ?? []) {
-    map[row.card_id] = row.quantity;
+    if (row.card_id) map[row.card_id] = row.quantity;
   }
   return map;
 }

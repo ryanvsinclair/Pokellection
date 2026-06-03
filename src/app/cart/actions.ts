@@ -8,6 +8,8 @@ import {
   isFulfillmentOption,
   validateCheckoutSelection,
 } from "@/lib/checkout-options";
+import { collectionSinglePriceCad } from "@/lib/collection-pricing";
+import { detachCardFromPublishedCollection } from "@/lib/collection-fulfillment";
 import { getCartItemCount } from "@/lib/queries/cart";
 import { generateOrderNumber } from "@/lib/tracking";
 import { createClient } from "@/lib/supabase/server";
@@ -21,9 +23,30 @@ export type AddToCartResult =
       inCartQuantity?: number;
     };
 
+export type AddCollectionToCartResult =
+  | { ok: true; count: number }
+  | {
+      ok: false;
+      error: "missing_collection" | "auth" | "failed" | "unavailable" | "conflict";
+    };
+
+export type AddCollectionSingleToCartResult =
+  | { ok: true; count: number }
+  | {
+      ok: false;
+      error:
+        | "missing"
+        | "auth"
+        | "failed"
+        | "unavailable"
+        | "conflict"
+        | "in_cart";
+    };
+
 function revalidateCartSurfaces() {
   revalidatePath("/checkout");
   revalidatePath("/shop");
+  revalidatePath("/collections");
 }
 
 export async function addToCartAction(
@@ -94,6 +117,146 @@ export async function addToCartAction(
   }
 }
 
+export async function addCollectionToCartAction(
+  _prev: AddCollectionToCartResult | null,
+  formData: FormData,
+): Promise<AddCollectionToCartResult> {
+  const collectionId = String(formData.get("collection_id") ?? "");
+  if (!collectionId) return { ok: false, error: "missing_collection" };
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { ok: false, error: "auth" };
+    }
+
+    const { data: collection } = await supabase
+      .from("collections")
+      .select("id, status")
+      .eq("id", collectionId)
+      .maybeSingle();
+
+    if (!collection || collection.status !== "available") {
+      return { ok: false, error: "unavailable" };
+    }
+
+    const { data: conflictingSingles } = await supabase
+      .from("cart_items")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("from_collection_id", collectionId)
+      .limit(1);
+
+    if (conflictingSingles?.length) {
+      return { ok: false, error: "conflict" };
+    }
+
+    const { data: existing } = await supabase
+      .from("cart_items")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("collection_id", collectionId)
+      .maybeSingle();
+
+    if (!existing) {
+      const { error } = await supabase.from("cart_items").insert({
+        user_id: user.id,
+        collection_id: collectionId,
+        quantity: 1,
+      });
+      if (error) return { ok: false, error: "failed" };
+    }
+
+    const count = await getCartItemCount(supabase, user.id);
+    return { ok: true, count };
+  } catch {
+    return { ok: false, error: "failed" };
+  }
+}
+
+export async function addCollectionSingleToCartAction(
+  _prev: AddCollectionSingleToCartResult | null,
+  formData: FormData,
+): Promise<AddCollectionSingleToCartResult> {
+  const cardId = String(formData.get("card_id") ?? "");
+  const collectionId = String(formData.get("collection_id") ?? "");
+  if (!cardId || !collectionId) return { ok: false, error: "missing" };
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { ok: false, error: "auth" };
+
+    const { data: bundleLine } = await supabase
+      .from("cart_items")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("collection_id", collectionId)
+      .maybeSingle();
+
+    if (bundleLine) return { ok: false, error: "conflict" };
+
+    const { data: collection } = await supabase
+      .from("collections")
+      .select("id, status")
+      .eq("id", collectionId)
+      .maybeSingle();
+
+    if (!collection || collection.status !== "available") {
+      return { ok: false, error: "unavailable" };
+    }
+
+    const { data: link } = await supabase
+      .from("collection_cards")
+      .select("card_id")
+      .eq("collection_id", collectionId)
+      .eq("card_id", cardId)
+      .maybeSingle();
+
+    if (!link) return { ok: false, error: "unavailable" };
+
+    const { data: card } = await supabase
+      .from("cards")
+      .select("quantity, status")
+      .eq("id", cardId)
+      .maybeSingle();
+
+    if (!card || card.status !== "reserved" || card.quantity < 1) {
+      return { ok: false, error: "unavailable" };
+    }
+
+    const { data: existing } = await supabase
+      .from("cart_items")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("card_id", cardId)
+      .maybeSingle();
+
+    if (existing) return { ok: false, error: "in_cart" };
+
+    const { error } = await supabase.from("cart_items").insert({
+      user_id: user.id,
+      card_id: cardId,
+      from_collection_id: collectionId,
+      quantity: 1,
+    });
+
+    if (error) return { ok: false, error: "failed" };
+
+    const count = await getCartItemCount(supabase, user.id);
+    return { ok: true, count };
+  } catch {
+    return { ok: false, error: "failed" };
+  }
+}
+
 export async function updateCartQuantity(formData: FormData) {
   const cartItemId = String(formData.get("cart_item_id") ?? "");
   const quantity = Number(formData.get("quantity") ?? 1);
@@ -107,12 +270,16 @@ export async function updateCartQuantity(formData: FormData) {
 
   const { data: cartItem } = await supabase
     .from("cart_items")
-    .select("card_id")
+    .select("card_id, collection_id, from_collection_id")
     .eq("id", cartItemId)
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!cartItem) return;
+  if (!cartItem?.card_id || cartItem.collection_id) return;
+
+  if (cartItem.from_collection_id) {
+    redirect("/checkout?error=collection_single_qty");
+  }
 
   const { data: card } = await supabase
     .from("cards")
@@ -192,50 +359,142 @@ export async function placeOrder(formData: FormData) {
 
   const { data: cartRows } = await supabase
     .from("cart_items")
-    .select("id, quantity, card_id")
+    .select("id, quantity, card_id, collection_id, from_collection_id")
     .eq("user_id", user.id);
 
   if (!cartRows?.length) {
     redirect("/checkout");
   }
 
-  const cardIds = cartRows.map((row) => row.card_id);
-  const { data: cards } = await supabase.from("cards").select("*").in("id", cardIds);
+  const cardRowsOnly = cartRows.filter((row) => row.card_id && !row.collection_id);
+  const collectionRowsOnly = cartRows.filter((row) => row.collection_id);
+  const shopCardRows = cardRowsOnly.filter((row) => !row.from_collection_id);
+  const collectionSingleRows = cardRowsOnly.filter((row) => row.from_collection_id);
+
+  const bundleCollectionIds = new Set(
+    collectionRowsOnly.map((row) => row.collection_id).filter(Boolean) as string[],
+  );
+  const singlesConflictBundle = collectionSingleRows.some(
+    (row) => row.from_collection_id && bundleCollectionIds.has(row.from_collection_id),
+  );
+  if (singlesConflictBundle) {
+    redirect("/checkout?error=collection_conflict");
+  }
+
+  const cardIds = cardRowsOnly.map((row) => row.card_id).filter(Boolean) as string[];
+  const { data: cards } = cardIds.length
+    ? await supabase.from("cards").select("*").in("id", cardIds)
+    : { data: [] };
   const cardMap = new Map((cards ?? []).map((card) => [card.id, card]));
 
-  const overStock = cartRows.some((row) => {
-    const card = cardMap.get(row.card_id);
+  const overStock = shopCardRows.some((row) => {
+    const card = row.card_id ? cardMap.get(row.card_id) : null;
     return card && row.quantity > card.quantity;
   });
   if (overStock) {
     redirect("/checkout?error=max_quantity");
   }
 
-  const lineItems = cartRows
+  const cardLineItems = shopCardRows
     .map((row) => {
+      if (!row.card_id) return null;
       const card = cardMap.get(row.card_id);
       if (!card || card.status !== "available" || row.quantity > card.quantity) return null;
-      return { cartItemId: row.id, card, quantity: row.quantity };
+      return { cartItemId: row.id, card, quantity: row.quantity, fromCollectionId: null as string | null };
     })
     .filter(Boolean) as {
     cartItemId: string;
-    card: {
-      id: string;
-      title: string;
-      price_cad: number;
-      status: string;
-    };
+    card: { id: string; title: string; price_cad: number; status: string };
     quantity: number;
+    fromCollectionId: string | null;
   }[];
 
-  if (lineItems.length === 0) {
+  const collectionSingleLineItems: {
+    cartItemId: string;
+    card: { id: string; title: string; price_cad: number; status: string };
+    fromCollectionId: string;
+    unitPrice: number;
+  }[] = [];
+
+  for (const row of collectionSingleRows) {
+    if (!row.card_id || !row.from_collection_id) continue;
+    const card = cardMap.get(row.card_id);
+    if (!card || card.status !== "reserved") {
+      redirect("/checkout?error=unavailable");
+    }
+
+    const { data: collection } = await supabase
+      .from("collections")
+      .select("id, status")
+      .eq("id", row.from_collection_id)
+      .maybeSingle();
+
+    if (!collection || collection.status !== "available") {
+      redirect("/checkout?error=unavailable");
+    }
+
+    const { data: link } = await supabase
+      .from("collection_cards")
+      .select("card_id")
+      .eq("collection_id", row.from_collection_id)
+      .eq("card_id", row.card_id)
+      .maybeSingle();
+
+    if (!link) redirect("/checkout?error=unavailable");
+
+    collectionSingleLineItems.push({
+      cartItemId: row.id,
+      card,
+      fromCollectionId: row.from_collection_id,
+      unitPrice: collectionSinglePriceCad(card.price_cad),
+    });
+  }
+
+  const collectionLineItems: {
+    cartItemId: string;
+    collection: { id: string; title: string; price_cad: number; status: string };
+    cardIds: string[];
+  }[] = [];
+
+  for (const row of collectionRowsOnly) {
+    if (!row.collection_id) continue;
+    const { data: collection } = await supabase
+      .from("collections")
+      .select("id, title, price_cad, status")
+      .eq("id", row.collection_id)
+      .maybeSingle();
+
+    if (!collection || collection.status !== "available") {
+      redirect("/checkout?error=unavailable");
+    }
+
+    const { data: links } = await supabase
+      .from("collection_cards")
+      .select("card_id")
+      .eq("collection_id", collection.id);
+
+    collectionLineItems.push({
+      cartItemId: row.id,
+      collection,
+      cardIds: (links ?? []).map((link) => link.card_id),
+    });
+  }
+
+  if (
+    cardLineItems.length === 0 &&
+    collectionLineItems.length === 0 &&
+    collectionSingleLineItems.length === 0
+  ) {
     redirect("/checkout?error=unavailable");
   }
 
-  const subtotal = lineItems.reduce(
-    (sum, item) => sum + Number(item.card.price_cad) * item.quantity,
-    0,
-  );
+  const subtotal =
+    cardLineItems.reduce(
+      (sum, item) => sum + Number(item.card.price_cad) * item.quantity,
+      0,
+    ) +
+    collectionSingleLineItems.reduce((sum, item) => sum + item.unitPrice, 0) +
+    collectionLineItems.reduce((sum, item) => sum + Number(item.collection.price_cad), 0);
   const total = subtotal + shippingFee;
   const orderNumber = generateOrderNumber();
 
@@ -278,18 +537,62 @@ export async function placeOrder(formData: FormData) {
     redirect("/checkout?error=order");
   }
 
-  await supabase.from("order_items").insert(
-    lineItems.map((item) => ({
+  const orderItemRows = [
+    ...cardLineItems.map((item) => ({
       order_id: order.id,
       card_id: item.card.id,
+      collection_id: null,
+      from_collection_id: null,
       title_snapshot: item.card.title,
       price_snapshot: item.card.price_cad,
       quantity: item.quantity,
     })),
-  );
+    ...collectionSingleLineItems.map((item) => ({
+      order_id: order.id,
+      card_id: item.card.id,
+      collection_id: null,
+      from_collection_id: item.fromCollectionId,
+      title_snapshot: `${item.card.title} (from collection)`,
+      price_snapshot: item.unitPrice,
+      quantity: 1,
+    })),
+    ...collectionLineItems.map((item) => ({
+      order_id: order.id,
+      card_id: null,
+      collection_id: item.collection.id,
+      from_collection_id: null,
+      title_snapshot: `${item.collection.title} (collection)`,
+      price_snapshot: item.collection.price_cad,
+      quantity: 1,
+    })),
+  ];
 
-  for (const item of lineItems) {
-    await supabase.from("cards").update({ status: "reserved" }).eq("id", item.card.id);
+  await supabase.from("order_items").insert(orderItemRows);
+
+  const shopCardIdsToSell = cardLineItems.map((item) => item.card.id);
+  const collectionSingleIdsToSell = collectionSingleLineItems.map((item) => item.card.id);
+  const bundleCardIdsToSell = collectionLineItems.flatMap((item) => item.cardIds);
+
+  const allCardIdsToSell = [
+    ...shopCardIdsToSell,
+    ...collectionSingleIdsToSell,
+    ...bundleCardIdsToSell,
+  ];
+
+  if (allCardIdsToSell.length > 0) {
+    await supabase.from("cards").update({ status: "sold" }).in("id", allCardIdsToSell);
+  }
+
+  for (const item of collectionSingleLineItems) {
+    await detachCardFromPublishedCollection(
+      supabase,
+      item.fromCollectionId,
+      item.card.id,
+    );
+  }
+
+  for (const item of collectionLineItems) {
+    await supabase.from("collections").update({ status: "sold" }).eq("id", item.collection.id);
   }
 
   await supabase.from("cart_items").delete().eq("user_id", user.id);

@@ -74,24 +74,96 @@ export type Database = {
         }
         Relationships: []
       }
-      cart_items: {
+      collection_cards: {
         Row: {
           card_id: string
+          collection_id: string
+          sort_order: number
+        }
+        Insert: {
+          card_id: string
+          collection_id: string
+          sort_order?: number
+        }
+        Update: {
+          card_id?: string
+          collection_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_cards_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_cards_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collections: {
+        Row: {
           created_at: string
+          description: string | null
+          id: string
+          price_cad: number
+          slug: string
+          status: Database["public"]["Enums"]["collection_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          price_cad: number
+          slug: string
+          status?: Database["public"]["Enums"]["collection_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          price_cad?: number
+          slug?: string
+          status?: Database["public"]["Enums"]["collection_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cart_items: {
+        Row: {
+          card_id: string | null
+          collection_id: string | null
+          created_at: string
+          from_collection_id: string | null
           id: string
           quantity: number
           user_id: string
         }
         Insert: {
-          card_id: string
+          card_id?: string | null
+          collection_id?: string | null
           created_at?: string
+          from_collection_id?: string | null
           id?: string
           quantity?: number
           user_id: string
         }
         Update: {
-          card_id?: string
+          card_id?: string | null
+          collection_id?: string | null
           created_at?: string
+          from_collection_id?: string | null
           id?: string
           quantity?: number
           user_id?: string
@@ -104,11 +176,27 @@ export type Database = {
             referencedRelation: "cards"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cart_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_from_collection_id_fkey"
+            columns: ["from_collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
         ]
       }
       order_items: {
         Row: {
-          card_id: string
+          card_id: string | null
+          collection_id: string | null
+          from_collection_id: string | null
           id: string
           order_id: string
           price_snapshot: number
@@ -116,7 +204,9 @@ export type Database = {
           title_snapshot: string
         }
         Insert: {
-          card_id: string
+          card_id?: string | null
+          collection_id?: string | null
+          from_collection_id?: string | null
           id?: string
           order_id: string
           price_snapshot: number
@@ -124,7 +214,9 @@ export type Database = {
           title_snapshot: string
         }
         Update: {
-          card_id?: string
+          card_id?: string | null
+          collection_id?: string | null
+          from_collection_id?: string | null
           id?: string
           order_id?: string
           price_snapshot?: number
@@ -137,6 +229,20 @@ export type Database = {
             columns: ["card_id"]
             isOneToOne: false
             referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_from_collection_id_fkey"
+            columns: ["from_collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
             referencedColumns: ["id"]
           },
           {
@@ -335,6 +441,7 @@ export type Database = {
     Enums: {
       card_condition: "NM" | "LP" | "MP" | "HP" | "DMG"
       card_status: "available" | "reserved" | "sold" | "draft"
+      collection_status: "draft" | "available" | "sold"
       fulfillment_status:
         | "pending"
         | "ready_for_pickup"
@@ -481,6 +588,7 @@ export const Constants = {
     Enums: {
       card_condition: ["NM", "LP", "MP", "HP", "DMG"],
       card_status: ["available", "reserved", "sold", "draft"],
+      collection_status: ["draft", "available", "sold"],
       fulfillment_status: [
         "pending",
         "ready_for_pickup",

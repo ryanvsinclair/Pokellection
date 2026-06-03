@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { getAvailableCardBySlug } from "@/lib/queries/cards";
+import { getPublishedCollectionSlugForCard } from "@/lib/queries/collections";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad, getPhotoUrl } from "@/lib/utils";
@@ -28,7 +29,21 @@ export default async function CardDetailPage({ params }: Props) {
   const supabase = await createClient();
   const card = await getAvailableCardBySlug(supabase, slug);
 
-  if (!card) notFound();
+  if (!card) {
+    const { data: reserved } = await supabase
+      .from("cards")
+      .select("id")
+      .eq("slug", slug)
+      .eq("status", "reserved")
+      .maybeSingle();
+
+    if (reserved) {
+      const collectionSlug = await getPublishedCollectionSlugForCard(supabase, reserved.id);
+      if (collectionSlug) redirect(`/collections/${collectionSlug}`);
+    }
+
+    notFound();
+  }
 
   const {
     data: { user },

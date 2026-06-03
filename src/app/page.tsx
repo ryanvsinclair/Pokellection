@@ -1,24 +1,15 @@
 import Link from "next/link";
 import { CardGrid } from "@/components/CardGrid";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
+import { getLatestArrivals, LATEST_ARRIVAL_TIERS } from "@/lib/queries/cards";
 import { createClient } from "@/lib/supabase/server";
-import { logSupabaseFetchError } from "@/lib/supabase/env";
 
 export default async function HomePage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: cards, error } = await supabase
-    .from("cards")
-    .select("*")
-    .eq("status", "available")
-    .order("created_at", { ascending: false })
-    .limit(8);
-
-  if (error) {
-    logSupabaseFetchError("HomePage cards", error);
-  }
+  const cards = await getLatestArrivals(supabase);
 
   const cartQtyByCardId = user
     ? await getCartQuantitiesByCardId(supabase, user.id)
@@ -55,7 +46,12 @@ export default async function HomePage() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Latest arrivals</h2>
+          <div>
+            <h2 className="text-xl font-bold">Latest arrivals</h2>
+            <p className="text-sm text-muted">
+              A mix of new listings ({LATEST_ARRIVAL_TIERS.map((t) => t.label).join(", ")})
+            </p>
+          </div>
           <Link href="/shop" className="text-sm font-medium text-primary">
             View all
           </Link>
@@ -63,7 +59,7 @@ export default async function HomePage() {
         <CardGrid
           cards={cards ?? []}
           cartQtyByCardId={cartQtyByCardId}
-          emptyMessage="No cards listed yet. Check back soon!"
+          emptyMessage="No new listings in these price ranges right now."
         />
       </section>
 

@@ -22,6 +22,21 @@ delivery by 11 PM with area fees in `shipping_address.delivery_area`. UI:
 
 ---
 
+## Card collections (bundles + singles)
+
+**Context:** Managers publish a fixed-price bundle; buyers browse each card’s photo
+and details on the collection page. Singles in a published bundle must not appear
+in shop/search; buyers may buy one card from the bundle at list price + $5.
+
+**Decision:** Publish sets member cards `reserved` (hidden from `getAvailableCards`
+via status + `getCardIdsInPublishedCollections`). Cart uses `from_collection_id` on
+card lines for singles (`011_collection_single_purchase.sql`). `/shop/[slug]` redirects
+reserved cards to `/collections/[slug]`. Selling a single detaches the card from
+`collection_cards` and auto-unpublishes the bundle when empty. Bundle vs singles
+for the same collection cannot coexist in cart/checkout.
+
+---
+
 ## Cart quantity capped by `cards.quantity`
 
 **Context:** Buyers could add more cart units than the listing’s `cards.quantity` (shop

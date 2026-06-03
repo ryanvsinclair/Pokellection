@@ -49,6 +49,7 @@ export async function updateOrder(formData: FormData) {
       .eq("order_id", orderId);
 
     for (const item of items ?? []) {
+      if (!item.card_id) continue;
       await supabase.from("cards").update({ status: "sold" }).eq("id", item.card_id);
     }
   }

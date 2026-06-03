@@ -9,7 +9,10 @@ import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/database";
 
 function buildNavLinks(user: { id: string } | null, role: UserRole | null): NavLinkItem[] {
-  const links: NavLinkItem[] = [{ href: "/shop", label: "Shop" }];
+  const links: NavLinkItem[] = [
+    { href: "/shop", label: "Shop" },
+    { href: "/collections", label: "Collections" },
+  ];
 
   if (user) {
     links.push(
