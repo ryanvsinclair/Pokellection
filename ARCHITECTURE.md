@@ -43,8 +43,11 @@ alternate query shapes on 500 (`filters=[]`, omit `offset` on page 1). If the br
 - **Gotcha:** HTML embed is often **one page (~30 cards)** while `total_cards` can be higher (e.g. 33).
   The extra cards exist only on API page 2+. When the API 500s from both browser and Vercel, sync gets
   30/33 with a warning — not a parser bug. After HTML, we still attempt API supplement for remaining
-  offsets. Fix is usually: scroll-load the showcase on Collectr, retry preview from that browser, or
-  sync from local dev if the API works there.
+  offsets.
+- **Gotcha:** Browsers ignore `Referer`/`Origin` in `fetch()` headers. Production admin was sending the
+  Pokellection URL as referer; Collectr sub-collections then 500 while localhost often still worked.
+  Use `collectrBrowserFetchInit` (`referrer` + `referrerPolicy: "unsafe-url"`). Fallback:
+  `POST /api/admin/collectr/showcase-page` (server sets Referer) before HTML scrape.
 
 ---
 

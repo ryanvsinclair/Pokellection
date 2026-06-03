@@ -1,6 +1,6 @@
 import {
   COLLECTR_PAGE_SIZE,
-  collectrFetchHeaders,
+  collectrBrowserFetchInit,
   mapShowcaseProducts,
   parseCollectrShowcaseTarget,
   showcaseApiUrlsForPage,
@@ -60,19 +60,36 @@ async function scrapeCollectrPortfolioHtmlViaServer(
   return payload;
 }
 
-async function fetchShowcasePageFromBrowser(
+async function fetchShowcasePageViaServerProxy(
+  profileUrl: string,
+  offset: number,
+): Promise<CollectrShowcasePage> {
+  const response = await fetch("/api/admin/collectr/showcase-page", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: profileUrl.trim(), offset }),
+    cache: "no-store",
+  });
+
+  const payload = (await response.json()) as CollectrShowcasePage & { error?: string };
+  if (!response.ok) {
+    throw new Error(payload.error ?? `Collectr proxy request failed (${response.status}).`);
+  }
+
+  return payload;
+}
+
+async function fetchShowcasePageDirect(
   target: CollectrShowcaseTarget,
   offset: number,
   profileUrl: string,
 ): Promise<CollectrShowcasePage> {
   const urls = showcaseApiUrlsForPage(target.profileId, offset, target.collectionId);
+  const init = collectrBrowserFetchInit(profileUrl, "application/json, text/plain, */*");
   let lastError: Error | null = null;
 
   for (const url of urls) {
-    const response = await fetch(url, {
-      headers: collectrFetchHeaders(profileUrl, "application/json, text/plain, */*"),
-      cache: "no-store",
-    });
+    const response = await fetch(url, init);
 
     if (response.ok) {
       return (await response.json()) as CollectrShowcasePage;
@@ -87,6 +104,22 @@ async function fetchShowcasePageFromBrowser(
   }
 
   throw lastError ?? new Error("Collectr API request failed");
+}
+
+async function fetchShowcasePageFromBrowser(
+  target: CollectrShowcaseTarget,
+  offset: number,
+  profileUrl: string,
+): Promise<CollectrShowcasePage> {
+  try {
+    return await fetchShowcasePageDirect(target, offset, profileUrl);
+  } catch (directError) {
+    try {
+      return await fetchShowcasePageViaServerProxy(profileUrl, offset);
+    } catch {
+      throw directError;
+    }
+  }
 }
 
 function incompletePaginationWarning(

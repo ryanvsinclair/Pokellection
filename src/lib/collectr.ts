@@ -85,14 +85,44 @@ function buildCollectrQuery(params: Record<string, string | number | undefined |
     .join("&");
 }
 
+const COLLECTR_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+/** Node/server only — browsers ignore forbidden Referer/Origin header overrides. */
 export function collectrFetchHeaders(profileUrl: string, accept: string): HeadersInit {
   return {
-    "user-agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "user-agent": COLLECTR_USER_AGENT,
     accept,
     origin: "https://app.getcollectr.com",
     referer: profileUrl,
   };
+}
+
+/**
+ * Browser fetch to Collectr's API. Must set `referrer` (not a Referer header) so
+ * Collectr sees the showcase URL; otherwise production sends the admin page URL
+ * and sub-collection requests often return 500.
+ */
+export function collectrBrowserFetchInit(profileUrl: string, accept: string): RequestInit {
+  return {
+    headers: {
+      accept,
+    },
+    referrer: profileUrl.trim(),
+    referrerPolicy: "unsafe-url",
+    cache: "no-store",
+    mode: "cors",
+  };
+}
+
+/** Server-side paginated fetch (used by scrape-html and the showcase proxy route). */
+export async function fetchCollectrShowcasePage(
+  profileUrl: string,
+  offset: number,
+): Promise<CollectrShowcasePage> {
+  const trimmedUrl = profileUrl.trim();
+  const target = parseCollectrShowcaseTarget(trimmedUrl);
+  return fetchShowcasePage(target, offset, trimmedUrl);
 }
 
 export interface CollectrShowcaseTarget {
