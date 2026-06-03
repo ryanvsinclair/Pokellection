@@ -5,9 +5,9 @@ import {
   saveCollection,
   unpublishCollection,
 } from "@/app/admin/collections/actions";
+import { CollectionCardPicker } from "@/components/admin/CollectionCardPicker";
 import type { CollectionWithCards } from "@/lib/queries/collections";
 import type { Card } from "@/types/database";
-import { formatCad } from "@/lib/utils";
 
 interface Props {
   collection?: CollectionWithCards;
@@ -102,47 +102,12 @@ export function CollectionForm({
           </label>
         )}
 
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Cards in this collection</legend>
-          <p className="text-xs text-muted">
-            Order follows your selection top to bottom. Only available singles can be added.
-          </p>
-          <div className="max-h-80 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
-            {selectableCards.length === 0 ? (
-              <p className="text-sm text-muted">No available cards to add.</p>
-            ) : (
-              selectableCards.map((card) => {
-                const locked =
-                  lockedInOtherCollections.has(card.id) && !selectedIds.has(card.id);
-                return (
-                  <label
-                    key={card.id}
-                    className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface ${
-                      locked ? "cursor-not-allowed opacity-50" : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      name="card_ids"
-                      value={card.id}
-                      defaultChecked={selectedIds.has(card.id)}
-                      disabled={!isDraft || locked}
-                      className="mt-1"
-                    />
-                    <span>
-                      <span className="font-medium">{card.title}</span>
-                      <span className="block text-xs text-muted">
-                        {formatCad(card.price_cad)}
-                        {card.set_name ? ` · ${card.set_name}` : ""}
-                        {locked ? " · In another collection" : ""}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })
-            )}
-          </div>
-        </fieldset>
+        <CollectionCardPicker
+          cards={selectableCards}
+          selectedIds={selectedIds}
+          lockedInOtherCollections={lockedInOtherCollections}
+          disabled={!isDraft}
+        />
 
         {isDraft && (
           <button
