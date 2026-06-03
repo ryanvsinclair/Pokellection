@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { assertManager } from "@/lib/admin-auth";
 import { acquisitionTag } from "@/lib/collectr-acquisition";
-import { collectrIdentity, type CollectrPortfolioItem } from "@/lib/collectr";
+import type { CollectrPortfolioItem } from "@/lib/collectr";
 import {
   buildExistingCollectrMap,
   cardRowFromCollectrItem,
@@ -10,6 +10,8 @@ import {
   patchWhenListedInCollectr,
   uploadCollectrPhoto,
 } from "@/lib/collectr-card-import";
+import { collectrSyncKeyForItem } from "@/lib/collectr-sync";
+import { DEFAULT_CARD_LANGUAGE } from "@/lib/card-language";
 import { roundPriceCad } from "@/lib/currency";
 import { createClient } from "@/lib/supabase/server";
 
@@ -55,19 +57,19 @@ export async function POST(request: Request) {
 
     const { data: cards, error: cardsError } = await supabase
       .from("cards")
-      .select("id,title,tags,status,quantity,set_name,card_number,printing,condition");
+      .select("id,title,tags,status,quantity,language,set_name,card_number,printing,condition");
     if (cardsError) {
       return NextResponse.json({ error: cardsError.message }, { status: 400 });
     }
 
-    const existingMap = buildExistingCollectrMap(cards ?? []);
+    const existingMap = buildExistingCollectrMap(cards ?? [], { language: "english" });
 
     let added = 0;
     let merged = 0;
     const linkRows: { acquisition_id: string; card_id: string; quantity_added: number }[] = [];
 
     for (const item of scraped) {
-      const identity = collectrIdentity(item);
+      const syncKey = collectrSyncKeyForItem(DEFAULT_CARD_LANGUAGE, item);
       const existing = findExistingForAcquisition(item, existingMap);
 
       if (!existing) {
@@ -93,12 +95,13 @@ export async function POST(request: Request) {
             card_id: inserted.id,
             quantity_added: item.quantity,
           });
-          existingMap.set(identity, {
+          existingMap.set(syncKey, {
             id: inserted.id,
             title: item.title,
             tags: ["collectr", acqTag],
             status: "available",
             quantity: item.quantity,
+            language: DEFAULT_CARD_LANGUAGE,
             set_name: item.setName,
             card_number: item.cardNumber,
             printing: item.productSubType,

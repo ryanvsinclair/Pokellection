@@ -1,13 +1,12 @@
 import {
   COLLECTR_PAGE_SIZE,
-  buildShowcaseUrl,
   collectrFetchHeaders,
   mapShowcaseProducts,
-  parseCollectrPortfolio,
   parseCollectrShowcaseTarget,
-  parseTotalCardsFromHtml,
+  showcaseApiUrlsForPage,
   type CollectrScrapeResult,
   type CollectrShowcasePage,
+  type CollectrShowcaseTarget,
 } from "@/lib/collectr";
 
 const PAGE_DELAY_MS = 150;
@@ -43,37 +42,51 @@ function collectrScrapeError(
   return `Collectr API request failed (${status}) at offset ${offset} for ${scope}. ${hints.join(" ")}`;
 }
 
-async function scrapeCollectrPortfolioHtmlFromBrowser(
+async function scrapeCollectrPortfolioHtmlViaServer(
   profileUrl: string,
   apiMessage: string,
 ): Promise<CollectrScrapeResult> {
-  const response = await fetch(profileUrl.trim(), {
-    headers: collectrFetchHeaders(profileUrl, "text/html,application/xhtml+xml"),
-    cache: "no-store",
+  const response = await fetch("/api/admin/collectr/scrape-html", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: profileUrl.trim(), apiMessage }),
   });
 
+  const payload = (await response.json()) as CollectrScrapeResult & { error?: string };
   if (!response.ok) {
-    throw new Error(
-      `Collectr API failed (${apiMessage}); showcase page request failed (${response.status}).`,
-    );
+    throw new Error(payload.error ?? `Server HTML scrape failed (${response.status}).`);
   }
 
-  const html = await response.text();
-  const items = parseCollectrPortfolio(html);
-  if (items.length === 0) {
-    throw new Error(
-      `Collectr API failed (${apiMessage}); no cards found in the showcase HTML. Check the URL is public.`,
+  return payload;
+}
+
+async function fetchShowcasePageFromBrowser(
+  target: CollectrShowcaseTarget,
+  offset: number,
+  profileUrl: string,
+): Promise<CollectrShowcasePage> {
+  const urls = showcaseApiUrlsForPage(target.profileId, offset, target.collectionId);
+  let lastError: Error | null = null;
+
+  for (const url of urls) {
+    const response = await fetch(url, {
+      headers: collectrFetchHeaders(profileUrl, "application/json, text/plain, */*"),
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      return (await response.json()) as CollectrShowcasePage;
+    }
+
+    lastError = new Error(
+      collectrScrapeError(target.profileId, target.collectionId, response.status, offset),
     );
+    if (response.status !== 500) {
+      throw lastError;
+    }
   }
 
-  return {
-    items,
-    totalCards: parseTotalCardsFromHtml(html),
-    source: "html",
-    warning:
-      `Collectr API pagination failed (${apiMessage}); ` +
-      `fell back to HTML scrape (${items.length} cards from the first page only).`,
-  };
+  throw lastError ?? new Error("Collectr API request failed");
 }
 
 export async function scrapeCollectrPortfolioFromBrowser(
@@ -87,21 +100,7 @@ export async function scrapeCollectrPortfolioFromBrowser(
 
   try {
     while (offset <= MAX_OFFSET) {
-      const response = await fetch(
-        buildShowcaseUrl(target.profileId, offset, target.collectionId),
-        {
-          headers: collectrFetchHeaders(trimmedUrl, "application/json, text/plain, */*"),
-          cache: "no-store",
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          collectrScrapeError(target.profileId, target.collectionId, response.status, offset),
-        );
-      }
-
-      const page = (await response.json()) as CollectrShowcasePage;
+      const page = await fetchShowcasePageFromBrowser(target, offset, trimmedUrl);
       if (totalCards === null && page.total_cards) {
         const parsedTotal = Number.parseInt(page.total_cards, 10);
         totalCards = Number.isFinite(parsedTotal) ? parsedTotal : null;
@@ -127,7 +126,7 @@ export async function scrapeCollectrPortfolioFromBrowser(
     const apiMessage =
       apiError instanceof Error ? apiError.message : "Collectr API request failed";
     try {
-      return await scrapeCollectrPortfolioHtmlFromBrowser(trimmedUrl, apiMessage);
+      return await scrapeCollectrPortfolioHtmlViaServer(trimmedUrl, apiMessage);
     } catch (htmlError) {
       const htmlMessage =
         htmlError instanceof Error ? htmlError.message : "HTML scrape failed";

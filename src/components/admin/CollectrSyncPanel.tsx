@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CollectrPortfolioItem } from "@/lib/collectr";
+import type { CollectrSyncItem } from "@/lib/collectr-portfolios";
 import { scrapeCollectrPortfolioFromBrowser } from "@/lib/collectr-client";
 import {
   scrapeCollectrPortfoliosFromBrowser,
@@ -21,10 +21,10 @@ interface PreviewPayload {
   source?: "api" | "html";
   warning?: string;
   existingCount: number;
-  toAdd: CollectrPortfolioItem[];
-  toRelist: CollectrPortfolioItem[];
+  toAdd: CollectrSyncItem[];
+  toRelist: CollectrSyncItem[];
   toDelist: DelistItem[];
-  scraped: CollectrPortfolioItem[];
+  scraped: CollectrSyncItem[];
   showcaseProfileIds: string[];
   syncLabel?: string;
   portfolioSources?: { label: string; count: number; language?: string }[];

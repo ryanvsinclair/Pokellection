@@ -27,12 +27,12 @@ export async function POST(request: Request) {
 
     const { data: cards, error } = await supabase
       .from("cards")
-      .select("id,title,status,tags,quantity,set_name,card_number,printing,condition");
+      .select("id,title,status,tags,quantity,language,set_name,card_number,printing,condition");
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    const existingMap = buildExistingCollectrMap(cards ?? []);
+    const existingMap = buildExistingCollectrMap(cards ?? [], { language: "english" });
 
     const toAdd: CollectrPortfolioItem[] = [];
     const toMerge: {
@@ -84,8 +84,8 @@ export async function POST(request: Request) {
       toMerge,
       scraped,
       matchNote:
-        "Qty bumps match by Collectr catalog ID (product + condition + printing + grade), not name alone. " +
-        "Set and card number must also match when both are on file. Cards already on the site from main sync count as existing.",
+        "Qty bumps match English inventory only (same Collectr catalog ID + set/# when on file). " +
+        "French/Japanese/Korean listings are separate and are not merged from temp import.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Acquisition preview failed.";

@@ -1,29 +1,19 @@
 import { NextResponse } from "next/server";
 import { assertManager } from "@/lib/admin-auth";
+import { collectrTagFor } from "@/lib/collectr";
 import {
-  collectrIdentity,
-  collectrTagFor,
-  parseCollectrIdentityFromTag,
-  type CollectrPortfolioItem,
-} from "@/lib/collectr";
+  buildExistingCollectrMap,
+  parseCollectrIdentityFromTags,
+} from "@/lib/collectr-card-import";
 import { parseCollectrShowcaseFromTags } from "@/lib/collectr-portfolios";
+import {
+  syncKeyForCollectrSyncItem,
+  type CollectrSyncItem,
+} from "@/lib/collectr-sync";
 import { createClient } from "@/lib/supabase/server";
 
-interface ExistingCard {
-  id: string;
-  title: string;
-  status: "available" | "reserved" | "sold" | "draft";
-  tags: string[];
-}
-
-function parseCollectrIdentityFromTags(tags: string[] | null): string | null {
-  if (!tags) return null;
-  const tagged = tags.find((tag) => tag.startsWith("collectr:"));
-  return tagged ? parseCollectrIdentityFromTag(tagged) : null;
-}
-
 function matchesSyncedShowcase(
-  card: ExistingCard,
+  card: { tags: string[] },
   showcaseProfileIds: Set<string>,
 ): boolean {
   if (showcaseProfileIds.size === 0) return true;
@@ -34,7 +24,7 @@ function matchesSyncedShowcase(
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
-      items?: CollectrPortfolioItem[];
+      items?: CollectrSyncItem[];
       totalCards?: number | null;
       showcaseProfileIds?: string[];
     };
@@ -51,37 +41,46 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     await assertManager(supabase);
 
-    const { data: cards, error } = await supabase.from("cards").select("id,title,status,tags");
+    const { data: cards, error } = await supabase
+      .from("cards")
+      .select("id,title,status,tags,language,quantity");
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    const existingMap = new Map<string, ExistingCard>();
-    for (const card of cards ?? []) {
-      const identity = parseCollectrIdentityFromTags(card.tags);
-      if (!identity) continue;
-      existingMap.set(identity, card as ExistingCard);
-    }
+    const existingMap = buildExistingCollectrMap(cards ?? []);
 
-    const scrapedIdentities = new Set(scraped.map((item) => collectrIdentity(item)));
-    const toAdd = scraped.filter((item) => !existingMap.has(collectrIdentity(item)));
+    const scrapedSyncKeys = new Set(scraped.map((item) => syncKeyForCollectrSyncItem(item)));
+    const toAdd = scraped.filter((item) => !existingMap.has(syncKeyForCollectrSyncItem(item)));
     const toRelist = scraped.filter((item) => {
-      const existing = existingMap.get(collectrIdentity(item));
+      const existing = existingMap.get(syncKeyForCollectrSyncItem(item));
       return existing && (existing.status === "sold" || existing.status === "draft");
     });
     const toDelist = Array.from(existingMap.entries())
-      .filter(([identity, card]) => {
-        if (scrapedIdentities.has(identity)) return false;
+      .filter(([syncKey, card]) => {
+        if (scrapedSyncKeys.has(syncKey)) return false;
         if (card.status === "reserved" || card.status === "sold") return false;
         if (card.status !== "available" && card.status !== "draft") return false;
         return matchesSyncedShowcase(card, showcaseProfileIds);
       })
-      .map(([identity, card]) => ({
-        productId: identity,
-        cardId: card.id,
-        title: card.title,
-        status: card.status,
-      }));
+      .map(([syncKey, card]) => {
+        const identity = parseCollectrIdentityFromTags(card.tags) ?? syncKey;
+        return {
+          productId: identity,
+          cardId: card.id,
+          title: card.title,
+          status: card.status,
+        };
+      });
+
+    const syncMetadata = {
+      languages: Object.fromEntries(
+        scraped.map((item) => [syncKeyForCollectrSyncItem(item), item.language]),
+      ),
+      showcaseScopeIds: Object.fromEntries(
+        scraped.map((item) => [syncKeyForCollectrSyncItem(item), item.showcaseScopeId]),
+      ),
+    };
 
     return NextResponse.json({
       scrapedCount: scraped.length,
@@ -92,6 +91,8 @@ export async function POST(request: Request) {
       toRelist,
       toDelist,
       scraped,
+      itemLanguages: syncMetadata.languages,
+      itemShowcaseScopeIds: syncMetadata.showcaseScopeIds,
       tagsExample: [
         collectrTagFor({
           productId: "12345",

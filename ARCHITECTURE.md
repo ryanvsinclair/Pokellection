@@ -19,6 +19,29 @@ adjusts `subtotal_cad` (total = subtotal + shipping) in admin and checks “Read
 
 ---
 
+## Collectr language isolation (English / French / JP / KR)
+
+**Context:** The same Collectr catalog identity (product + condition + printing + grade) can appear
+in multiple language showcases; merging by identity alone caused wrong qty updates and slug clashes.
+
+**Decision:** Match and delist using `language:collectrIdentity` sync keys. Each scraped row carries
+`language` + `showcaseScopeId` (collection UUID or profile handle). Slugs append language when not
+English. Acquisition qty bumps match **English** inventory only. Delist still scoped by
+`collectr-showcase:<scopeId>` tag per showcase.
+
+---
+
+## Collectr sub-collection sync (French / JP / KR)
+
+**Context:** `api-v2` may return **500** for `?collection=<uuid>` when the request includes
+`unstackedView=true` (main showcase uses it; Collectr app's `getShowcaseProfile` query does not).
+
+**Decision:** `buildShowcaseUrl` omits `unstackedView` when `id` (collection UUID) is set; retries
+alternate query shapes on 500. If the browser API still fails, `/api/admin/collectr/scrape-html`
+server-fetches the public showcase page (avoids CORS "Failed to fetch" on `app.getcollectr.com`).
+
+---
+
 ## Card language from Collectr sync showcase
 
 **Context:** Main = English; French / Japanese / Korean are separate Collectr collection URLs.

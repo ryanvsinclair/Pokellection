@@ -1,4 +1,6 @@
+import { DEFAULT_CARD_LANGUAGE } from "@/lib/card-language";
 import { importPriceCad } from "@/lib/currency";
+import type { CardLanguage } from "@/types/database";
 import { slugify } from "@/lib/utils";
 
 export interface CollectrPortfolioItem {
@@ -168,7 +170,10 @@ export function buildShowcaseUrl(
   profileId: string,
   offset: number,
   collectionId?: string | null,
+  options: ShowcaseUrlOptions = {},
 ): string {
+  const includeUnstacked =
+    options.unstackedView ?? (collectionId ? false : true);
   const query = buildCollectrQuery({
     searchString: "",
     offset,
@@ -177,12 +182,36 @@ export function buildShowcaseUrl(
     sortType: "",
     sortOrder: "",
     groupId: "",
-    unstackedView: "true",
+    ...(options.filters ? { filters: "[]" } : {}),
+    ...(includeUnstacked ? { unstackedView: "true" } : {}),
   });
   return (
     `${COLLECTR_API_BASE}/data/showcase/${encodeURIComponent(profileId)}` +
     `?${query}&username=${COLLECTR_ANON_USERNAME}`
   );
+}
+
+/** Server-side HTML scrape when the browser cannot reach Collectr (API 500 / CORS). */
+export async function scrapeCollectrPortfolioFromHtmlUrl(
+  profileUrl: string,
+  apiMessage?: string,
+): Promise<CollectrScrapeResult> {
+  const html = await fetchProfileHtml(profileUrl.trim());
+  const items = parseCollectrPortfolio(html);
+  if (items.length === 0) {
+    throw new Error(
+      "No cards found in the showcase HTML. Check the URL is public and includes ?collection=… when needed.",
+    );
+  }
+
+  return {
+    items,
+    totalCards: parseTotalCardsFromHtml(html),
+    source: "html",
+    warning: apiMessage
+      ? `${apiMessage} Fell back to server HTML scrape (${items.length} cards from embedded page data; may be first page only).`
+      : undefined,
+  };
 }
 
 export function mapShowcaseProducts(rows: CollectrRawItem[]): CollectrPortfolioItem[] {
@@ -222,10 +251,45 @@ export function mergeCollectrPortfolioItems(
 }
 
 export function parseTotalCardsFromHtml(html: string): number | null {
-  const match = html.match(/"total_cards":"(\d+)"/);
-  if (!match) return null;
-  const total = Number.parseInt(match[1], 10);
-  return Number.isFinite(total) ? total : null;
+  const patterns = [/"total_cards":"(\d+)"/, /\\"total_cards\\":\\"(\d+)\\"/];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (!match) continue;
+    const total = Number.parseInt(match[1], 10);
+    if (Number.isFinite(total)) return total;
+  }
+  return null;
+}
+
+export type ShowcaseUrlOptions = {
+  /** Main showcase uses true; sub-collections omit this (Collectr app query). */
+  unstackedView?: boolean;
+  /** Retry variant — include empty JSON array filters param. */
+  filters?: boolean;
+};
+
+export function showcaseApiUrlsForPage(
+  profileId: string,
+  offset: number,
+  collectionId: string | null,
+): string[] {
+  const urls = new Set<string>();
+  urls.add(buildShowcaseUrl(profileId, offset, collectionId));
+  if (collectionId) {
+    urls.add(
+      buildShowcaseUrl(profileId, offset, collectionId, {
+        unstackedView: false,
+        filters: true,
+      }),
+    );
+    urls.add(
+      buildShowcaseUrl(profileId, offset, collectionId, {
+        unstackedView: true,
+        filters: true,
+      }),
+    );
+  }
+  return [...urls];
 }
 
 export function parseCollectrPortfolio(html: string): CollectrPortfolioItem[] {
@@ -329,22 +393,8 @@ export async function scrapeCollectrPortfolio(profileUrl: string): Promise<Colle
     return await fetchAllShowcaseProductsViaApi(target, trimmedUrl);
   } catch (apiError) {
     const apiMessage = apiError instanceof Error ? apiError.message : "Collectr API request failed";
-
     try {
-      const html = await fetchProfileHtml(trimmedUrl);
-      const items = parseCollectrPortfolio(html);
-      if (items.length === 0) {
-        throw new Error("No portfolio cards found. Check the profile URL and make sure the showcase is public.");
-      }
-
-      return {
-        items,
-        totalCards: parseTotalCardsFromHtml(html),
-        source: "html",
-        warning:
-          `Collectr API pagination failed (${apiMessage}); ` +
-          `fell back to HTML scrape (${items.length} cards from the first page only).`,
-      };
+      return await scrapeCollectrPortfolioFromHtmlUrl(trimmedUrl, apiMessage);
     } catch (htmlError) {
       const htmlMessage = htmlError instanceof Error ? htmlError.message : "HTML scrape failed";
       throw new Error(`Collectr sync failed. API: ${apiMessage}. HTML fallback: ${htmlMessage}.`);
@@ -381,7 +431,10 @@ export function parseCollectrIdentityFromTag(tag: string): string | null {
   return tag.startsWith("collectr:") ? tag.slice("collectr:".length) : null;
 }
 
-export function collectrSlug(item: CollectrPortfolioItem): string {
+export function collectrSlug(
+  item: CollectrPortfolioItem,
+  language: CardLanguage = DEFAULT_CARD_LANGUAGE,
+): string {
   // The title no longer encodes the printing, so product + condition alone would
   // collide across printings (e.g. Gastly NM Reverse Holofoil vs NM Normal).
   // Include printing and grade to keep the slug unique per listing.
@@ -395,6 +448,7 @@ export function collectrSlug(item: CollectrPortfolioItem): string {
     item.productId,
     item.condition.toLowerCase(),
     variant,
+    language !== DEFAULT_CARD_LANGUAGE ? slugify(language) : "",
   ]
     .filter(Boolean)
     .join("-");

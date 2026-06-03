@@ -1,5 +1,4 @@
 import {
-  collectrIdentity,
   mergeCollectrPortfolioItems,
   parseCollectrShowcaseTarget,
   parseProfileIdFromUrl,
@@ -7,7 +6,10 @@ import {
   type CollectrPortfolioItem,
 } from "@/lib/collectr";
 import { DEFAULT_CARD_LANGUAGE, isCardLanguage } from "@/lib/card-language";
+import { syncKeyForCollectrSyncItem, type CollectrSyncItem } from "@/lib/collectr-sync";
 import type { CardLanguage } from "@/types/database";
+
+export type { CollectrSyncItem } from "@/lib/collectr-sync";
 
 function languageFromPortfolioLabel(label: string): CardLanguage {
   const lower = label.toLowerCase();
@@ -24,10 +26,22 @@ export interface CollectrPortfolioConfig {
   language: CardLanguage;
 }
 
+/** @deprecated Prefer `language` / `showcaseScopeId` on each `CollectrSyncItem`. */
 export type CollectrSyncMetadata = {
   languages: Record<string, CardLanguage>;
   showcaseScopeIds: Record<string, string>;
 };
+
+function metadataFromSyncItems(items: CollectrSyncItem[]): CollectrSyncMetadata {
+  const languages: Record<string, CardLanguage> = {};
+  const showcaseScopeIds: Record<string, string> = {};
+  for (const item of items) {
+    const key = syncKeyForCollectrSyncItem(item);
+    languages[key] = item.language;
+    showcaseScopeIds[key] = item.showcaseScopeId;
+  }
+  return { languages, showcaseScopeIds };
+}
 
 export function collectrShowcaseTag(profileId: string): string {
   return `collectr-showcase:${profileId}`;
@@ -117,7 +131,7 @@ export async function scrapeCollectrPortfoliosFromBrowser(
   portfolios: CollectrPortfolioConfig[],
   scrapeOne: (url: string) => Promise<{ items: CollectrPortfolioItem[]; totalCards: number | null }>,
 ): Promise<{
-  items: CollectrPortfolioItem[];
+  items: CollectrSyncItem[];
   totalCards: number | null;
   showcaseProfileIds: string[];
   sources: { label: string; count: number; language: CardLanguage }[];
@@ -127,11 +141,9 @@ export async function scrapeCollectrPortfoliosFromBrowser(
     throw new Error("Add at least one Collectr portfolio URL.");
   }
 
-  const merged: CollectrPortfolioItem[] = [];
+  const bySyncKey = new Map<string, CollectrSyncItem>();
   const sources: { label: string; count: number; language: CardLanguage }[] = [];
   const showcaseProfileIds: string[] = [];
-  const languages: Record<string, CardLanguage> = {};
-  const showcaseScopeIds: Record<string, string> = {};
   let totalCards: number | null = null;
 
   for (const portfolio of portfolios) {
@@ -139,17 +151,27 @@ export async function scrapeCollectrPortfoliosFromBrowser(
     showcaseProfileIds.push(scopeId);
 
     const result = await scrapeOne(portfolio.url);
+    const dedupedInShowcase = mergeCollectrPortfolioItems(result.items);
+
     sources.push({
       label: portfolio.label,
-      count: result.items.length,
+      count: dedupedInShowcase.length,
       language: portfolio.language,
     });
 
-    for (const item of result.items) {
-      const identity = collectrIdentity(item);
-      languages[identity] = portfolio.language;
-      showcaseScopeIds[identity] = scopeId;
-      merged.push(item);
+    for (const item of dedupedInShowcase) {
+      const syncItem: CollectrSyncItem = {
+        ...item,
+        language: portfolio.language,
+        showcaseScopeId: scopeId,
+      };
+      const key = syncKeyForCollectrSyncItem(syncItem);
+      const existing = bySyncKey.get(key);
+      if (existing) {
+        existing.quantity += syncItem.quantity;
+      } else {
+        bySyncKey.set(key, { ...syncItem });
+      }
     }
 
     if (result.totalCards != null) {
@@ -157,7 +179,7 @@ export async function scrapeCollectrPortfoliosFromBrowser(
     }
   }
 
-  const items = mergeCollectrPortfolioItems(merged);
+  const items = Array.from(bySyncKey.values());
   if (items.length === 0) {
     throw new Error("No owned Pokemon cards found in the selected portfolio(s).");
   }
@@ -167,6 +189,6 @@ export async function scrapeCollectrPortfoliosFromBrowser(
     totalCards,
     showcaseProfileIds,
     sources,
-    syncMetadata: { languages, showcaseScopeIds },
+    syncMetadata: metadataFromSyncItems(items),
   };
 }

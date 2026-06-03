@@ -8,6 +8,7 @@ import {
 import { soldAtForStatus } from "@/lib/card-sold";
 import { roundPriceCad } from "@/lib/currency";
 import { DEFAULT_CARD_LANGUAGE } from "@/lib/card-language";
+import { collectrSyncKey, collectrSyncKeyForItem } from "@/lib/collectr-sync";
 import type { CardLanguage, CardStatus } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
@@ -20,6 +21,7 @@ export interface ExistingCollectrCard {
   tags: string[];
   status: CardStatus;
   quantity: number;
+  language: CardLanguage;
   set_name: string | null;
   card_number: string | null;
   printing: string | null;
@@ -84,7 +86,7 @@ export function findExistingForAcquisition(
   item: CollectrPortfolioItem,
   map: Map<string, ExistingCollectrCard>,
 ): ExistingCollectrCard | null {
-  const candidate = map.get(collectrIdentity(item));
+  const candidate = map.get(collectrSyncKeyForItem(DEFAULT_CARD_LANGUAGE, item));
   if (!candidate) return null;
   return acquisitionMatchesExisting(item, candidate) ? candidate : null;
 }
@@ -102,16 +104,21 @@ export function buildExistingCollectrMap(
     tags: string[] | null;
     status: CardStatus;
     quantity: number;
+    language?: CardLanguage | null;
     set_name?: string | null;
     card_number?: string | null;
     printing?: string | null;
     condition?: string;
   }[],
+  options?: { language?: CardLanguage },
 ): Map<string, ExistingCollectrCard> {
   const map = new Map<string, ExistingCollectrCard>();
   for (const card of cards) {
     const identity = parseCollectrIdentityFromTags(card.tags);
     if (!identity) continue;
+
+    const language = card.language ?? DEFAULT_CARD_LANGUAGE;
+    if (options?.language && language !== options.language) continue;
 
     const row: ExistingCollectrCard = {
       id: card.id,
@@ -119,21 +126,23 @@ export function buildExistingCollectrMap(
       tags: card.tags ?? [],
       status: card.status,
       quantity: card.quantity,
+      language,
       set_name: card.set_name ?? null,
       card_number: card.card_number ?? null,
       printing: card.printing ?? null,
       condition: card.condition ?? "NM",
     };
 
-    const existing = map.get(identity);
+    const key = collectrSyncKey(language, identity);
+    const existing = map.get(key);
     if (!existing) {
-      map.set(identity, row);
+      map.set(key, row);
       continue;
     }
 
     existing.quantity += card.quantity;
     if (listingStatusRank(row.status) > listingStatusRank(existing.status)) {
-      map.set(identity, { ...row, quantity: existing.quantity });
+      map.set(key, { ...row, quantity: existing.quantity });
     }
   }
   return map;
@@ -194,7 +203,7 @@ export function cardRowFromCollectrItem(
   const collectrTag = collectrTagFor(item);
   return {
     title: item.title,
-    slug: collectrSlug(item),
+    slug: collectrSlug(item, language),
     set_name: item.setName,
     card_number: item.cardNumber,
     rarity: item.rarity,
