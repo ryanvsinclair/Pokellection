@@ -39,6 +39,10 @@ English. Acquisition qty bumps match **English** inventory only. Delist still sc
 **Decision:** `buildShowcaseUrl` omits `unstackedView` when `id` (collection UUID) is set; retries
 alternate query shapes on 500. If the browser API still fails, `/api/admin/collectr/scrape-html`
 server-fetches the public showcase page (avoids CORS "Failed to fetch" on `app.getcollectr.com`).
+- **Gotcha:** HTML embed is often **one page (~30 cards)** while `total_cards` can be higher (e.g. 33).
+  Local dev usually paginates via the browser API; production may hit page-2 failures and fall back
+  to partial HTML. `/api/admin/collectr/scrape-html` tries server API pagination first, then HTML.
+  Client keeps partial API results instead of replacing them with HTML when page 2 fails.
 
 ---
 

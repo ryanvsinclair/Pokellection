@@ -4,6 +4,7 @@ import {
   parseProfileIdFromUrl,
   showcaseScopeIdFromTarget,
   type CollectrPortfolioItem,
+  type CollectrScrapeResult,
 } from "@/lib/collectr";
 import { DEFAULT_CARD_LANGUAGE, isCardLanguage } from "@/lib/card-language";
 import { syncKeyForCollectrSyncItem, type CollectrSyncItem } from "@/lib/collectr-sync";
@@ -129,13 +130,15 @@ export function normalizeCollectrPortfolios(
 
 export async function scrapeCollectrPortfoliosFromBrowser(
   portfolios: CollectrPortfolioConfig[],
-  scrapeOne: (url: string) => Promise<{ items: CollectrPortfolioItem[]; totalCards: number | null }>,
+  scrapeOne: (url: string) => Promise<CollectrScrapeResult>,
 ): Promise<{
   items: CollectrSyncItem[];
   totalCards: number | null;
   showcaseProfileIds: string[];
   sources: { label: string; count: number; language: CardLanguage }[];
   syncMetadata: CollectrSyncMetadata;
+  source: "api" | "html";
+  warning?: string;
 }> {
   if (portfolios.length === 0) {
     throw new Error("Add at least one Collectr portfolio URL.");
@@ -145,12 +148,17 @@ export async function scrapeCollectrPortfoliosFromBrowser(
   const sources: { label: string; count: number; language: CardLanguage }[] = [];
   const showcaseProfileIds: string[] = [];
   let totalCards: number | null = null;
+  let source: "api" | "html" = "api";
+  const warnings: string[] = [];
 
   for (const portfolio of portfolios) {
     const scopeId = showcaseScopeIdFromPortfolioUrl(portfolio.url);
     showcaseProfileIds.push(scopeId);
 
     const result = await scrapeOne(portfolio.url);
+    if (result.source === "html") source = "html";
+    if (result.warning) warnings.push(`${portfolio.label}: ${result.warning}`);
+
     const dedupedInShowcase = mergeCollectrPortfolioItems(result.items);
 
     sources.push({
@@ -190,5 +198,7 @@ export async function scrapeCollectrPortfoliosFromBrowser(
     showcaseProfileIds,
     sources,
     syncMetadata: metadataFromSyncItems(items),
+    source,
+    warning: warnings.length > 0 ? warnings.join(" ") : undefined,
   };
 }

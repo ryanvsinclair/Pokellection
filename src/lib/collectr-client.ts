@@ -89,6 +89,18 @@ async function fetchShowcasePageFromBrowser(
   throw lastError ?? new Error("Collectr API request failed");
 }
 
+function incompletePaginationWarning(
+  itemCount: number,
+  totalCards: number | null,
+  detail: string,
+): string | undefined {
+  if (totalCards == null || itemCount >= totalCards) return undefined;
+  return (
+    `${detail} Pulled ${itemCount} of ${totalCards} cards from Collectr. ` +
+    "Try preview again from this browser, or run sync from local dev if pagination keeps failing."
+  );
+}
+
 export async function scrapeCollectrPortfolioFromBrowser(
   profileUrl: string,
 ): Promise<CollectrScrapeResult> {
@@ -97,9 +109,10 @@ export async function scrapeCollectrPortfolioFromBrowser(
   const allProducts: NonNullable<CollectrShowcasePage["products"]> = [];
   let offset = 0;
   let totalCards: number | null = null;
+  let lastPageError: string | null = null;
 
-  try {
-    while (offset <= MAX_OFFSET) {
+  while (offset <= MAX_OFFSET) {
+    try {
       const page = await fetchShowcasePageFromBrowser(target, offset, trimmedUrl);
       if (totalCards === null && page.total_cards) {
         const parsedTotal = Number.parseInt(page.total_cards, 10);
@@ -107,30 +120,50 @@ export async function scrapeCollectrPortfolioFromBrowser(
       }
 
       const products = page.products ?? [];
-      if (products.length === 0) break;
+      if (products.length === 0) {
+        if (totalCards != null && allProducts.length > 0 && allProducts.length < totalCards) {
+          lastPageError = `Collectr returned no products at offset ${offset}.`;
+        }
+        break;
+      }
 
       allProducts.push(...products);
       offset += COLLECTR_PAGE_SIZE;
+
+      if (totalCards != null && allProducts.length >= totalCards) {
+        break;
+      }
+
       await sleep(PAGE_DELAY_MS);
+    } catch (pageError) {
+      lastPageError =
+        pageError instanceof Error ? pageError.message : "Collectr API request failed";
+      break;
     }
+  }
 
+  if (allProducts.length > 0) {
     const items = mapShowcaseProducts(allProducts);
-    if (items.length === 0) {
-      throw new Error(
-        "No owned Pokemon cards found. Make sure the showcase URL is correct and public.",
-      );
-    }
+    const warning = incompletePaginationWarning(
+      items.length,
+      totalCards,
+      lastPageError ?? "Pagination may have stopped early.",
+    );
 
-    return { items, totalCards, source: "api" };
-  } catch (apiError) {
-    const apiMessage =
-      apiError instanceof Error ? apiError.message : "Collectr API request failed";
-    try {
-      return await scrapeCollectrPortfolioHtmlViaServer(trimmedUrl, apiMessage);
-    } catch (htmlError) {
-      const htmlMessage =
-        htmlError instanceof Error ? htmlError.message : "HTML scrape failed";
-      throw new Error(`${apiMessage} ${htmlMessage}`);
-    }
+    return {
+      items,
+      totalCards,
+      source: "api",
+      warning,
+    };
+  }
+
+  const apiMessage = lastPageError ?? "Collectr API request failed";
+  try {
+    return await scrapeCollectrPortfolioHtmlViaServer(trimmedUrl, apiMessage);
+  } catch (htmlError) {
+    const htmlMessage =
+      htmlError instanceof Error ? htmlError.message : "HTML scrape failed";
+    throw new Error(`${apiMessage} ${htmlMessage}`);
   }
 }

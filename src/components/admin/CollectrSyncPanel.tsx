@@ -108,6 +108,8 @@ export function CollectrSyncPanel({ syncPortfolios }: Props) {
         portfolioSources: scrapeResult.sources,
         itemLanguages: scrapeResult.syncMetadata.languages,
         itemShowcaseScopeIds: scrapeResult.syncMetadata.showcaseScopeIds,
+        source: scrapeResult.source,
+        warning: scrapeResult.warning ?? payload.warning,
       });
     } catch (err) {
       setError(

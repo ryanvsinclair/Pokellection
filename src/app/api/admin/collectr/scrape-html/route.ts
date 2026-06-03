@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertManager } from "@/lib/admin-auth";
-import { scrapeCollectrPortfolioFromHtmlUrl } from "@/lib/collectr";
+import { scrapeCollectrPortfolio } from "@/lib/collectr";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -24,7 +24,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await scrapeCollectrPortfolioFromHtmlUrl(url, body.apiMessage);
+    const result = await scrapeCollectrPortfolio(url);
+    if (body.apiMessage && result.source === "html") {
+      result.warning = [body.apiMessage, result.warning].filter(Boolean).join(" ");
+    }
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "HTML scrape failed";
