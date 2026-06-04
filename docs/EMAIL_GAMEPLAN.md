@@ -51,13 +51,13 @@ Env vars (already in `.env.local`; mirror on Vercel):
 
 **Hooks:** checkout already sets review fields; admin `updateOrder` in `src/app/admin/orders/actions.ts`.
 
-- [ ] **Buyer:** no extra email on request (covered in Phase 1 confirmation)
-- [ ] Template: **manager pricing review requested** (optional duplicate alert if Phase 1 is enough, skip or merge)
-- [ ] Template: **buyer pricing review resolved — ready to pay**
-  - [ ] New subtotal / total, e-transfer amount, e-transfer email
-  - [ ] Link to order page
-- [ ] `sendPricingReviewResolvedEmail(orderId)` when `resolve_pricing_review=1` and `pricing_review_resolved_at` set in `updateOrder`
-- [ ] Manual test: resolve review in admin → buyer receives “ready to pay”
+- [x] **Buyer:** no extra email on request (covered in Phase 1 confirmation)
+- [x] Template: **manager pricing review requested** (skipped — Phase 1 manager alert covers it)
+- [x] Template: **buyer pricing review resolved — ready to pay**
+  - [x] New subtotal / total, e-transfer amount, e-transfer email
+  - [x] Link to order page
+- [x] `sendPricingReviewResolvedEmail(orderId)` when `resolve_pricing_review=1` in `updateOrder`
+- [ ] Manual test: resolve review in admin → buyer receives “ready to pay” — **you**
 
 ---
 

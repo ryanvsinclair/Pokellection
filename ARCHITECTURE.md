@@ -26,8 +26,9 @@ adjusts `subtotal_cad` (total = subtotal + shipping) in admin and checks “Read
 
 **Decision:** `src/lib/email/` — Resend SDK, fail-open (`sendOrderPlacedEmails` never throws).
 Requires `RESEND_API_KEY` + `RESEND_DEFAULT_FROM` (verified domain). Manager inbox:
-`MANAGER_NOTIFICATION_EMAIL` → `site_settings.contact_email` → `BUSINESS_EMAIL`. Hook:
-`placeOrder` → `sendOrderPlacedEmails`.
+`MANAGER_NOTIFICATION_EMAIL` → `site_settings.contact_email` → `BUSINESS_EMAIL`. Hooks:
+`placeOrder` → `sendOrderPlacedEmails`; admin `updateOrder` with “ready to pay” on price review
+→ `sendPricingReviewResolvedEmail`.
 
 ---
 

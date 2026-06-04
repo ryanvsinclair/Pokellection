@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertManager } from "@/lib/admin-auth";
 import { markCardSoldUpdate } from "@/lib/card-sold";
+import { sendPricingReviewResolvedEmail } from "@/lib/email/pricing-review";
 import { orderHasOpenPricingReview } from "@/lib/order-pricing-review";
 import { createClient } from "@/lib/supabase/server";
 import type { FulfillmentStatus, PaymentStatus } from "@/types/database";
@@ -81,11 +82,20 @@ export async function updateOrder(formData: FormData) {
     total_cad: totalCad,
   };
 
-  if (pricingReviewOpen && resolvePricingReview) {
+  const resolvingPricingReview = pricingReviewOpen && resolvePricingReview;
+  if (resolvingPricingReview) {
     updatePayload.pricing_review_resolved_at = new Date().toISOString();
   }
 
   await supabase.from("orders").update(updatePayload).eq("id", orderId);
+
+  if (resolvingPricingReview) {
+    try {
+      await sendPricingReviewResolvedEmail(supabase, orderId);
+    } catch (emailError) {
+      console.error("[email] pricing review resolved send failed:", emailError);
+    }
+  }
 
   if (fulfillmentStatus === "shipped" || fulfillmentStatus === "completed") {
     const { data: items } = await supabase
