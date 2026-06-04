@@ -168,7 +168,7 @@ export async function uploadCollectrPhoto(
     if (!imageResponse.ok) return null;
     const contentType = imageResponse.headers.get("content-type");
     const ext = extensionFromContentType(contentType);
-    const path = `cards/collectr/${item.productId}-${Date.now()}.${ext}`;
+    const path = `cards/listings/${item.productId}-${Date.now()}.${ext}`;
     const bytes = await imageResponse.arrayBuffer();
 
     const { error } = await supabase.storage.from("card-photos").upload(path, bytes, {

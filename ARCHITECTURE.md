@@ -8,6 +8,16 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## Public card slugs must not contain “collectr”
+
+**Context:** Legacy `collectrSlug()` inserted `-collectr-` and `collectr-card` into shop URLs.
+
+**Decision:** `buildListingSlugFromCollectrItem` (`src/lib/card-slug.ts`) — `title-productId-condition-printing`.
+Migration `022` + `npm run migrate:card-slugs` strip old infixes. Middleware and `/shop/[slug]` 301
+legacy URLs via `canonicalSlugForRedirect`. New photo uploads use `cards/listings/` not `cards/collectr/`.
+
+---
+
 ## SEO, sitemap, and Google Merchant feed
 
 **Context:** Public discovery (Google Search + Shopping) for shop singles and collections.

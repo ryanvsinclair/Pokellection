@@ -1,7 +1,7 @@
+import { buildListingSlugFromCollectrItem } from "@/lib/card-slug";
 import { DEFAULT_CARD_LANGUAGE } from "@/lib/card-language";
 import { importPriceCad } from "@/lib/currency";
 import type { CardLanguage } from "@/types/database";
-import { slugify } from "@/lib/utils";
 
 export interface CollectrPortfolioItem {
   productId: string;
@@ -575,25 +575,20 @@ export function parseCollectrIdentityFromTag(tag: string): string | null {
   return tag.startsWith("collectr:") ? tag.slice("collectr:".length) : null;
 }
 
+/** @deprecated Prefer `buildListingSlugFromCollectrItem` — name kept for imports. */
 export function collectrSlug(
   item: CollectrPortfolioItem,
   language: CardLanguage = DEFAULT_CARD_LANGUAGE,
 ): string {
-  // The title no longer encodes the printing, so product + condition alone would
-  // collide across printings (e.g. Gastly NM Reverse Holofoil vs NM Normal).
-  // Include printing and grade to keep the slug unique per listing.
-  const variant = [item.productSubType, item.gradeCompany]
-    .map((part) => (part ? slugify(String(part)) : ""))
-    .filter(Boolean)
-    .join("-");
-  return [
-    slugify(item.title || "collectr-card"),
-    "collectr",
-    item.productId,
-    item.condition.toLowerCase(),
-    variant,
-    language !== DEFAULT_CARD_LANGUAGE ? slugify(language) : "",
-  ]
-    .filter(Boolean)
-    .join("-");
+  return buildListingSlugFromCollectrItem(
+    {
+      title: item.title,
+      productId: item.productId,
+      condition: item.condition,
+      productSubType: item.productSubType,
+      gradeCompany: item.gradeCompany,
+      language,
+    },
+    language,
+  );
 }

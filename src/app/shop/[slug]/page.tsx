@@ -10,6 +10,7 @@ import { canPurchaseAsBuyer } from "@/lib/auth-roles";
 import { getAvailableCardBySlug } from "@/lib/queries/cards";
 import { getPublishedCollectionSlugForCard } from "@/lib/queries/collections";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
+import { canonicalSlugForRedirect } from "@/lib/card-slug";
 import {
   buildBreadcrumbJsonLd,
   buildCardDescription,
@@ -51,6 +52,13 @@ export default async function CardDetailPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
   const card = await getAvailableCardBySlug(supabase, slug);
+
+  if (!card) {
+    const canonical = canonicalSlugForRedirect(slug);
+    if (canonical) {
+      redirect(cardCanonicalPath(canonical));
+    }
+  }
 
   if (!card) {
     const { data: reserved } = await supabase

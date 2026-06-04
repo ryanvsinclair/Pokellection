@@ -1,3 +1,4 @@
+import { canonicalSlugForRedirect } from "@/lib/card-slug";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isBuyerAuthRequiredPath } from "@/lib/buyer-auth-paths";
@@ -47,6 +48,18 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const pathname = request.nextUrl.pathname;
+
+  const shopSlugMatch = pathname.match(/^\/shop\/([^/]+)\/?$/);
+  if (shopSlugMatch) {
+    const slug = decodeURIComponent(shopSlugMatch[1]);
+    const canonical = canonicalSlugForRedirect(slug);
+    if (canonical && canonical !== slug) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/shop/${encodeURIComponent(canonical)}`;
+      return NextResponse.redirect(url, 301);
+    }
+  }
+
   const isAdminRoute = pathname.startsWith("/admin");
 
   if (!supabaseUrl || !supabaseKey) {
