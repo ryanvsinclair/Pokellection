@@ -28,6 +28,7 @@ export type CollectionCard = Tables<"collection_cards">;
 export type SiteSettings = Tables<"site_settings">;
 export type Reservation = Tables<"reservations">;
 export type CartItem = Tables<"cart_items">;
+export type EmailLog = Tables<"email_logs">;
 export type Order = Tables<"orders">;
 export type OrderItem = Tables<"order_items">;
 export type PrivateSale = Tables<"private_sales">;

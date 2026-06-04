@@ -32,6 +32,11 @@ Requires `RESEND_API_KEY` + `RESEND_DEFAULT_FROM` (verified domain). Manager inb
 `sendOrderStatusEmails` (payment received, ready for pickup, shipped + tracking);
 `reserveCardForPickupAction` → `sendReservationEmails`.
 
+**Idempotency:** `email_logs` (migration `021`) + unique index on successful
+`order_placed_*` sends per order id prevents duplicate checkout confirmation emails.
+Logging uses `SUPABASE_SERVICE_ROLE_KEY` via `createServiceClient()` — not exposed to browsers.
+Managers can `select` logs in Supabase; Auth emails remain on Supabase, not Resend.
+
 ---
 
 ## French Collectr list pricing

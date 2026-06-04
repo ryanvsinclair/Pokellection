@@ -198,6 +198,42 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          provider_id: string | null
+          recipient: string
+          reference_id: string
+          reference_type: string
+          status: string
+          template: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          provider_id?: string | null
+          recipient: string
+          reference_id: string
+          reference_type: string
+          status: string
+          template: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          provider_id?: string | null
+          recipient?: string
+          reference_id?: string
+          reference_type?: string
+          status?: string
+          template?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           card_id: string | null

@@ -90,11 +90,11 @@ Env vars (already in `.env.local`; mirror on Vercel):
 
 ## Phase 5 — Polish & ops
 
-- [ ] Add `email_logs` table (optional) — `id, template, to, order_id, status, error, created_at` for debugging
-- [ ] ARCHITECTURE.md entry: Resend, fail-open on send, domain requirement
-- [ ] AGENTS.md one-liner under email / server actions
-- [ ] Rate-limit / idempotency: don’t resend order confirmation on double-submit (idempotency key = `order_id` + template name)
-- [ ] Consider Supabase Auth emails — only if branded reset/signup needed (separate decision)
+- [x] Add `email_logs` table — migration `021_email_logs.sql` (+ types in `supabase.ts`)
+- [x] ARCHITECTURE.md entry: Resend, fail-open, service role logging, idempotency
+- [x] AGENTS.md one-liner under email / server actions
+- [x] Idempotency: `order_placed_buyer` / `order_placed_manager` per `order_id` via `sendEmail({ idempotency })`
+- [x] Auth emails: stay on Supabase (no change unless branded templates requested later)
 
 ---
 

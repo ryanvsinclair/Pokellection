@@ -18,7 +18,8 @@ Supabase (`@supabase/ssr` + `@supabase/supabase-js`).
 |------|---------|
 | `src/app/` | Routes (App Router). Public, `account/` (buyer), `admin/` (manager), `api/`. |
 | `src/lib/queries/` | **All database reads.** Typed functions — use/extend these, don't inline queries. |
-| `src/lib/supabase/` | Client factories: `client.ts` (browser), `server.ts` (server), `middleware.ts` (session/route guards). |
+| `src/lib/supabase/` | Client factories: `client.ts` (browser), `server.ts` (server), `service.ts` (service role, server-only), `middleware.ts` (session/route guards). |
+| `src/lib/email/` | Resend transactional email (`send.ts`, templates). Server-only; fail-open on send errors. |
 | `src/lib/` | Shared logic: `collectr.ts`/`collectr-client.ts` (sync), `admin-auth.ts`, `tracking.ts`, `utils.ts`. |
 | `src/components/` | Shared UI; `admin/` for manager-only UI. |
 | `src/types/supabase.ts` | **Generated** DB types — source of truth. Never hand-edit. |

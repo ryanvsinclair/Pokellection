@@ -47,6 +47,11 @@ export async function sendOrderPlacedEmails(
       subject: buyer.subject,
       html: buyer.html,
       text: buyer.text,
+      idempotency: {
+        template: "order_placed_buyer",
+        referenceType: "order",
+        referenceId: orderId,
+      },
     });
     if (!buyerResult.ok) {
       if ("skipped" in buyerResult && buyerResult.skipped) {
@@ -65,6 +70,11 @@ export async function sendOrderPlacedEmails(
     html: manager.html,
     text: manager.text,
     replyTo: order.buyer_email?.trim() || undefined,
+    idempotency: {
+      template: "order_placed_manager",
+      referenceType: "order",
+      referenceId: orderId,
+    },
   });
   if (!managerResult.ok) {
     if ("skipped" in managerResult && managerResult.skipped) {
