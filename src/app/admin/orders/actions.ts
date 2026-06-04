@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertManager } from "@/lib/admin-auth";
 import { markCardSoldUpdate } from "@/lib/card-sold";
+import { sendOrderStatusEmails } from "@/lib/email/order-status";
 import { sendPricingReviewResolvedEmail } from "@/lib/email/pricing-review";
 import { orderHasOpenPricingReview } from "@/lib/order-pricing-review";
 import { createClient } from "@/lib/supabase/server";
@@ -47,25 +48,23 @@ export async function updateOrder(formData: FormData) {
     ? (rawPayment as PaymentStatus)
     : "awaiting_transfer";
 
-  const { data: existing } = await supabase
+  const { data: beforeOrder } = await supabase
     .from("orders")
-    .select(
-      "order_number, fulfillment_option, shipping_fee_cad, subtotal_cad, total_cad, pricing_review_requested_at, pricing_review_resolved_at",
-    )
+    .select("*")
     .eq("id", orderId)
     .single();
 
-  if (!existing) return;
+  if (!beforeOrder) return;
 
   const resolvePricingReview = formData.get("resolve_pricing_review") === "1";
   const subtotalRaw = String(formData.get("subtotal_cad") ?? "").trim();
   const subtotalCad =
-    subtotalRaw.length > 0 ? parseCadAmount(subtotalRaw) : Number(existing.subtotal_cad);
+    subtotalRaw.length > 0 ? parseCadAmount(subtotalRaw) : Number(beforeOrder.subtotal_cad);
 
   if (subtotalCad === null) return;
 
-  const totalCad = subtotalCad + Number(existing.shipping_fee_cad);
-  const pricingReviewOpen = orderHasOpenPricingReview(existing);
+  const totalCad = subtotalCad + Number(beforeOrder.shipping_fee_cad);
+  const pricingReviewOpen = orderHasOpenPricingReview(beforeOrder);
 
   const updatePayload: {
     tracking_number: string | null;
@@ -97,6 +96,20 @@ export async function updateOrder(formData: FormData) {
     }
   }
 
+  const { data: afterOrder } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .single();
+
+  if (afterOrder) {
+    try {
+      await sendOrderStatusEmails(beforeOrder, afterOrder);
+    } catch (emailError) {
+      console.error("[email] order status send failed:", emailError);
+    }
+  }
+
   if (fulfillmentStatus === "shipped" || fulfillmentStatus === "completed") {
     const { data: items } = await supabase
       .from("order_items")
@@ -112,7 +125,7 @@ export async function updateOrder(formData: FormData) {
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/account/orders");
-  if (existing.order_number) {
-    revalidatePath(`/account/orders/${existing.order_number}`);
+  if (beforeOrder.order_number) {
+    revalidatePath(`/account/orders/${beforeOrder.order_number}`);
   }
 }

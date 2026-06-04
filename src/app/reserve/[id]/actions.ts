@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getUserProfileRole, isBuyer } from "@/lib/auth-roles";
 import { buyerSignupPath } from "@/lib/buyer-auth-paths";
+import { sendReservationEmails } from "@/lib/email/reservation";
 import { createClient } from "@/lib/supabase/server";
 
 export type ReserveCardResult = { ok: true } | { ok: false; error: string };
@@ -62,19 +63,29 @@ export async function reserveCardForPickupAction(
     return { ok: false, error: "Add a phone number on your account or in the form." };
   }
 
-  const { error: reservationError } = await supabase.from("reservations").insert({
-    card_id: cardId,
-    buyer_name: buyerName,
-    buyer_email: buyerEmail,
-    buyer_phone: buyerPhone,
-    status: "pending",
-    reserved_at: new Date().toISOString(),
-    expires_at: expiresAt.toISOString(),
-    notes: String(formData.get("notes") || "") || null,
-  });
+  const { data: reservation, error: reservationError } = await supabase
+    .from("reservations")
+    .insert({
+      card_id: cardId,
+      buyer_name: buyerName,
+      buyer_email: buyerEmail,
+      buyer_phone: buyerPhone,
+      status: "pending",
+      reserved_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      notes: String(formData.get("notes") || "") || null,
+    })
+    .select("id")
+    .single();
 
-  if (reservationError) {
-    return { ok: false, error: reservationError.message };
+  if (reservationError || !reservation) {
+    return { ok: false, error: reservationError?.message ?? "Reservation failed." };
+  }
+
+  try {
+    await sendReservationEmails(supabase, reservation.id);
+  } catch (emailError) {
+    console.error("[email] reservation send failed:", emailError);
   }
 
   revalidatePath("/shop");

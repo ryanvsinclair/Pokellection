@@ -28,7 +28,9 @@ adjusts `subtotal_cad` (total = subtotal + shipping) in admin and checks “Read
 Requires `RESEND_API_KEY` + `RESEND_DEFAULT_FROM` (verified domain). Manager inbox:
 `MANAGER_NOTIFICATION_EMAIL` → `site_settings.contact_email` → `BUSINESS_EMAIL`. Hooks:
 `placeOrder` → `sendOrderPlacedEmails`; admin `updateOrder` with “ready to pay” on price review
-→ `sendPricingReviewResolvedEmail`.
+→ `sendPricingReviewResolvedEmail`; same action compares before/after order →
+`sendOrderStatusEmails` (payment received, ready for pickup, shipped + tracking);
+`reserveCardForPickupAction` → `sendReservationEmails`.
 
 ---
 

@@ -65,15 +65,15 @@ Env vars (already in `.env.local`; mirror on Vercel):
 
 **Hook:** `updateOrder` — detect meaningful changes vs previous row (payment_status, tracking_number, fulfillment_status).
 
-- [ ] Load previous order state before update (or compare form vs DB)
-- [ ] Template: **payment received** (when `payment_status` → `received` or `deposit_received`)
-  - [ ] Amount context (full vs deposit vs balance)
-- [ ] Template: **order shipped** (when `fulfillment_status` → `shipped` and `tracking_number` present)
-  - [ ] Tracking number + link via `getTrackingUrl`
-- [ ] Template: **ready for pickup** (when `fulfillment_status` → `ready_for_pickup`)
-- [ ] `sendOrderStatusEmails({ before, after })` — only send when field actually changed
-- [ ] Avoid duplicate emails on unrelated admin saves
-- [ ] Manual test each transition on a test order
+- [x] Load previous order state before update (full row `beforeOrder`)
+- [x] Template: **payment received** (when `payment_status` → `received` or `deposit_received`)
+  - [x] Amount context (full vs deposit vs balance)
+- [x] Template: **order shipped** (when `shipped` + tracking; also tracking added while shipped)
+  - [x] Tracking number + link via `getTrackingUrl`
+- [x] Template: **ready for pickup** (when `fulfillment_status` → `ready_for_pickup`)
+- [x] `sendOrderStatusEmails(before, after)` — only send when field actually changed
+- [x] Avoid duplicate emails on unrelated admin saves
+- [ ] Manual test each transition on a test order — **you**
 
 ---
 
@@ -81,10 +81,10 @@ Env vars (already in `.env.local`; mirror on Vercel):
 
 **Hook:** `reserveCardForPickupAction` in `src/app/reserve/[id]/actions.ts` after successful insert.
 
-- [ ] Template: **buyer reservation confirmation** (card title, expires end of day, pickup notes)
-- [ ] Template: **manager new reservation** (card, buyer contact, link to `/admin/reservations`)
-- [ ] `sendReservationEmails(reservationId)` or inline after insert
-- [ ] Manual test: reserve card while logged in as buyer
+- [x] Template: **buyer reservation confirmation** (card title, expires end of day, pickup notes)
+- [x] Template: **manager new reservation** (card, buyer contact, link to `/admin/reservations`)
+- [x] `sendReservationEmails(reservationId)` after insert in `reserveCardForPickupAction`
+- [ ] Manual test: reserve card while logged in as buyer — **you**
 
 ---
 
