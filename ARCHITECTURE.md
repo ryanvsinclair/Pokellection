@@ -19,6 +19,30 @@ adjusts `subtotal_cad` (total = subtotal + shipping) in admin and checks “Read
 
 ---
 
+## Resend transactional email
+
+**Context:** Order confirmations and manager alerts after checkout; more templates in
+`docs/EMAIL_GAMEPLAN.md`.
+
+**Decision:** `src/lib/email/` — Resend SDK, fail-open (`sendOrderPlacedEmails` never throws).
+Requires `RESEND_API_KEY` + `RESEND_DEFAULT_FROM` (verified domain). Manager inbox:
+`MANAGER_NOTIFICATION_EMAIL` → `site_settings.contact_email` → `BUSINESS_EMAIL`. Hook:
+`placeOrder` → `sendOrderPlacedEmails`.
+
+---
+
+## French Collectr list pricing
+
+**Context:** French cards use a separate Collectr showcase; Collectr metadata is still
+English-market USD. Physical stock is French; list prices should be below English equivalents.
+
+**Decision:** `collectrListPriceCad` (`src/lib/collectr-pricing.ts`) applies on French sync
+apply/insert only. Tiers on Collectr reference CAD (`marketPriceCad`): &lt;$10 → 70%,
+&lt;$25 → 65%, &lt;$50 → 60%, &lt;$100 → 55%, $100+ → 50%, then existing `roundPriceCad`
+shop rules ($0.50 / $1 floors, whole dollars ≥$1).
+
+---
+
 ## Collectr language isolation (English / French / JP / KR)
 
 **Context:** The same Collectr catalog identity (product + condition + printing + grade) can appear

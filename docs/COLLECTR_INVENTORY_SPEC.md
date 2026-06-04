@@ -60,6 +60,8 @@ collections use the same profile URL with `?collection=<uuid>` from Share.
 - **Sync behavior:** Same **showcase sync** mechanics as main, but **scoped** to cards
   tagged/linked to this showcase profile (delist only when missing from **French** sync,
   not when missing from main).
+- **Pricing:** Collectr still shows English-market prices; on sync apply, list price is a
+  tiered **50–70%** of that CAD reference (cheaper cards → higher %). See `collectr-pricing.ts`.
 - Shop may filter or segment French listings (implementation detail later).
 
 ### 2.4 Japanese / Korean — source of truth for JP/KR cards

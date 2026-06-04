@@ -6,7 +6,7 @@ import {
   type CollectrPortfolioItem,
 } from "@/lib/collectr";
 import { soldAtForStatus } from "@/lib/card-sold";
-import { roundPriceCad } from "@/lib/currency";
+import { collectrListPriceCad } from "@/lib/collectr-pricing";
 import { DEFAULT_CARD_LANGUAGE } from "@/lib/card-language";
 import { collectrSyncKey, collectrSyncKeyForItem } from "@/lib/collectr-sync";
 import type { CardLanguage, CardStatus } from "@/types/database";
@@ -209,7 +209,7 @@ export function cardRowFromCollectrItem(
     rarity: item.rarity,
     condition: item.condition,
     printing: item.productSubType,
-    price_cad: roundPriceCad(item.marketPriceCad),
+    price_cad: collectrListPriceCad(language, item.marketPriceCad),
     quantity,
     status: "available" as const,
     language,

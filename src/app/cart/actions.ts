@@ -17,6 +17,7 @@ import { getCartItemCount } from "@/lib/queries/cart";
 import { generateOrderNumber } from "@/lib/tracking";
 import { getUserProfileRole, isBuyer } from "@/lib/auth-roles";
 import { buyerSignupPath } from "@/lib/buyer-auth-paths";
+import { sendOrderPlacedEmails } from "@/lib/email/order-placed";
 import { createClient } from "@/lib/supabase/server";
 
 export type AddToCartResult =
@@ -634,6 +635,13 @@ export async function placeOrder(formData: FormData) {
   revalidatePath("/account/orders");
   revalidatePath("/admin/sales");
   revalidatePath("/admin/cards");
+  revalidatePath("/admin/orders");
+
+  try {
+    await sendOrderPlacedEmails(supabase, order.id);
+  } catch (emailError) {
+    console.error("[email] order placed send failed:", emailError);
+  }
 
   redirect(`/account/orders/${orderNumber}`);
 }

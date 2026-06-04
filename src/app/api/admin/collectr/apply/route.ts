@@ -18,7 +18,7 @@ import {
   syncKeyForCollectrSyncItem,
   type CollectrSyncItem,
 } from "@/lib/collectr-sync";
-import { roundPriceCad } from "@/lib/currency";
+import { collectrListPriceCad } from "@/lib/collectr-pricing";
 import { createClient } from "@/lib/supabase/server";
 
 function matchesSyncedShowcase(
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
           rarity: item.rarity,
           condition: item.condition,
           printing: item.productSubType,
-          price_cad: roundPriceCad(item.marketPriceCad),
+          price_cad: collectrListPriceCad(item.language, item.marketPriceCad),
           quantity: item.quantity,
           language: item.language,
           ...patchWhenListedInCollectr(existing),
