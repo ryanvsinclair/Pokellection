@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CardLanguageBadge } from "@/components/CardLanguageBadge";
 import { CardListingGallery } from "@/components/CardListingGallery";
+import { JsonLd } from "@/components/JsonLd";
 import { notFound, redirect } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { SignUpToBuy } from "@/components/SignUpToBuy";
@@ -8,6 +10,14 @@ import { canPurchaseAsBuyer } from "@/lib/auth-roles";
 import { getAvailableCardBySlug } from "@/lib/queries/cards";
 import { getPublishedCollectionSlugForCard } from "@/lib/queries/collections";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
+import {
+  buildBreadcrumbJsonLd,
+  buildCardDescription,
+  buildPageMetadata,
+  buildProductJsonLd,
+  cardCanonicalPath,
+  cardPrimaryImageUrl,
+} from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad } from "@/lib/utils";
 
@@ -15,17 +25,27 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data: card } = await supabase
-    .from("cards")
-    .select("title")
-    .eq("slug", slug)
-    .single();
+  const card = await getAvailableCardBySlug(supabase, slug);
 
-  return { title: card?.title ?? "Card" };
+  if (!card) {
+    return { title: "Card not found", robots: { index: false, follow: false } };
+  }
+
+  const title = `${card.title} — ${formatCad(card.price_cad)}`;
+  const description = buildCardDescription(card);
+
+  return buildPageMetadata({
+    title,
+    description,
+    path: cardCanonicalPath(card.slug),
+    imageUrl: cardPrimaryImageUrl(card),
+  });
 }
+
+export const revalidate = 60;
 
 export default async function CardDetailPage({ params }: Props) {
   const { slug } = await params;
@@ -56,10 +76,19 @@ export default async function CardDetailPage({ params }: Props) {
     : {};
   const cartQuantity = cartQtyByCardId[card.id] ?? 0;
   const canPurchase = await canPurchaseAsBuyer(supabase, user?.id);
-  const purchaseReturn = `/shop/${card.slug}`;
+  const purchaseReturn = cardCanonicalPath(card.slug);
+
+  const jsonLd = [
+    buildProductJsonLd(card),
+    buildBreadcrumbJsonLd([
+      { name: "Shop", path: "/shop" },
+      { name: card.title, path: cardCanonicalPath(card.slug) },
+    ]),
+  ];
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
+      <JsonLd data={jsonLd} />
       <CardListingGallery photos={card.photo_paths ?? []} title={card.title} />
 
       <div className="space-y-5">

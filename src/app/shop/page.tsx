@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ShopCatalogView } from "@/components/ShopCatalogView";
 import { ShopPricingNotice } from "@/components/ShopPricingNotice";
@@ -8,11 +9,17 @@ import {
   getCollectionListingMeta,
 } from "@/lib/queries/collections";
 import { canPurchaseAsBuyer } from "@/lib/auth-roles";
+import { buildPageMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
+import { LOCATION } from "@/lib/utils";
 
-export const metadata = {
-  title: "Shop",
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: "Shop Pokémon singles",
+  description: `Browse Pokémon TCG singles for sale in ${LOCATION}. Local pickup, reservations, and Canada-wide shipping by e-transfer.`,
+  path: "/shop",
+});
+
+export const revalidate = 60;
 
 export default async function ShopPage() {
   const supabase = await createClient();

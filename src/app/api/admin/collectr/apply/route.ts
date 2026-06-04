@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidatePublicCatalogSeo } from "@/lib/seo-revalidate";
 import { assertManager } from "@/lib/admin-auth";
 import { collectrTagFor } from "@/lib/collectr";
 import {
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
     revalidatePath("/shop");
     revalidatePath("/admin/import");
     revalidatePath("/collections");
+    revalidatePublicCatalogSeo();
 
     return NextResponse.json({
       added,

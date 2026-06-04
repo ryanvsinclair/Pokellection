@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidatePublicCatalogSeo } from "@/lib/seo-revalidate";
 import { redirect } from "next/navigation";
 import { assertManager } from "@/lib/admin-auth";
 import { roundPriceCad } from "@/lib/currency";
@@ -144,6 +145,7 @@ export async function saveCollection(formData: FormData) {
   revalidatePath("/admin/collections");
   revalidatePath("/collections");
   revalidatePath("/shop");
+  revalidatePublicCatalogSeo();
   redirect("/admin/collections");
 }
 
@@ -173,6 +175,7 @@ export async function publishCollection(formData: FormData) {
   revalidatePath("/admin/collections");
   revalidatePath("/collections");
   revalidatePath("/shop");
+  revalidatePublicCatalogSeo();
   redirect("/admin/collections");
 }
 
@@ -189,6 +192,7 @@ export async function unpublishCollection(formData: FormData) {
   revalidatePath("/admin/collections");
   revalidatePath("/collections");
   revalidatePath("/shop");
+  revalidatePublicCatalogSeo();
   redirect(`/admin/collections/${collectionId}/edit`);
 }
 
@@ -209,5 +213,6 @@ export async function deleteCollection(formData: FormData) {
   revalidatePath("/admin/collections");
   revalidatePath("/collections");
   revalidatePath("/shop");
+  revalidatePublicCatalogSeo();
   redirect("/admin/collections");
 }

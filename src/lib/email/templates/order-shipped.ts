@@ -1,8 +1,9 @@
 import type { Order } from "@/types/database";
 import { getTrackingUrl } from "@/lib/tracking";
 import {
-  emailButton,
-  emailParagraph,
+  emailButtonGroup,
+  emailKeyValue,
+  emailOrderBadge,
   escapeHtml,
   getSiteUrl,
   wrapEmailHtml,
@@ -16,11 +17,17 @@ export function buildOrderShippedEmail(
   const trackingUrl = getTrackingUrl(tracking);
 
   const bodyHtml = `
-    ${emailParagraph(`Hi ${escapeHtml(order.buyer_name)},`)}
-    ${emailParagraph(`Your order <strong>${escapeHtml(order.order_number)}</strong> has shipped.`)}
-    ${emailParagraph(`<strong>Tracking:</strong> ${escapeHtml(tracking)}`)}
-    ${emailButton(trackingUrl, "Track package")}
-    ${emailButton(orderUrl, "View your order")}
+    ${emailKeyValue([
+      { label: "Order", valueHtml: emailOrderBadge(order.order_number) },
+      {
+        label: "Tracking",
+        valueHtml: `<span style="font-family:ui-monospace,monospace;font-weight:600;">${escapeHtml(tracking)}</span>`,
+      },
+    ])}
+    ${emailButtonGroup([
+      { href: trackingUrl, label: "Track package", primary: true },
+      { href: orderUrl, label: "View your order", primary: false },
+    ])}
   `;
 
   const text = [
@@ -33,7 +40,11 @@ export function buildOrderShippedEmail(
 
   return {
     subject: `Your order ${order.order_number} has shipped`,
-    html: wrapEmailHtml(`Order ${order.order_number} shipped`, bodyHtml),
+    html: wrapEmailHtml(`Order ${order.order_number} shipped`, bodyHtml, {
+      preheader: `Tracking: ${tracking}`,
+      headline: "Your order has shipped",
+      lead: `Hi ${escapeHtml(order.buyer_name)}, your package is on the way.`,
+    }),
     text,
   };
 }

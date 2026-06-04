@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidatePublicCatalogSeo } from "@/lib/seo-revalidate";
 import { assertManager } from "@/lib/admin-auth";
 import { markCardSoldUpdate } from "@/lib/card-sold";
 import { parseCollectrIdentityFromTag } from "@/lib/collectr";
@@ -54,4 +55,5 @@ export async function recordPrivateSale(formData: FormData) {
   revalidatePath("/admin/sales");
   revalidatePath("/admin/cards");
   revalidatePath("/shop");
+  revalidatePublicCatalogSeo();
 }

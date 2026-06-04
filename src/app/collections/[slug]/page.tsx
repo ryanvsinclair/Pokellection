@@ -1,11 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddCollectionToCartButton } from "@/components/AddCollectionToCartButton";
 import { CollectionMemberList } from "@/components/CollectionMemberList";
+import { JsonLd } from "@/components/JsonLd";
 import { getAvailableCollectionBySlug } from "@/lib/queries/collections";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { SignUpToBuy } from "@/components/SignUpToBuy";
 import { canPurchaseAsBuyer } from "@/lib/auth-roles";
+import {
+  buildBreadcrumbJsonLd,
+  buildCollectionProductJsonLd,
+  buildPageMetadata,
+  collectionCanonicalPath,
+} from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { formatCad } from "@/lib/utils";
 import { COLLECTION_SINGLE_SURCHARGE_CAD } from "@/lib/collection-pricing";
@@ -14,18 +22,27 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("collections")
-    .select("title")
-    .eq("slug", slug)
-    .eq("status", "available")
-    .maybeSingle();
+  const collection = await getAvailableCollectionBySlug(supabase, slug);
 
-  return { title: data?.title ?? "Collection" };
+  if (!collection) {
+    return { title: "Collection not found", robots: { index: false, follow: false } };
+  }
+
+  const description =
+    collection.description?.trim() ||
+    `${collection.title} — ${collection.cards.length} Pokémon cards, bundle ${formatCad(collection.price_cad)}.`;
+
+  return buildPageMetadata({
+    title: `${collection.title} — ${formatCad(collection.price_cad)}`,
+    description,
+    path: collectionCanonicalPath(collection.slug),
+  });
 }
+
+export const revalidate = 60;
 
 export default async function CollectionDetailPage({ params }: Props) {
   const { slug } = await params;
@@ -46,7 +63,7 @@ export default async function CollectionDetailPage({ params }: Props) {
     : {};
 
   const canPurchase = await canPurchaseAsBuyer(supabase, user?.id);
-  const purchaseReturn = `/collections/${slug}`;
+  const purchaseReturn = collectionCanonicalPath(slug);
 
   let bundleInCart = false;
   let singlesInCart = false;
@@ -69,8 +86,17 @@ export default async function CollectionDetailPage({ params }: Props) {
     singlesInCart = Boolean(singleLines?.length);
   }
 
+  const jsonLd = [
+    buildCollectionProductJsonLd(collection, cards.length),
+    buildBreadcrumbJsonLd([
+      { name: "Collections", path: "/collections" },
+      { name: collection.title, path: collectionCanonicalPath(collection.slug) },
+    ]),
+  ];
+
   return (
     <div className="space-y-8">
+      <JsonLd data={jsonLd} />
       <div className="space-y-3">
         <p className="text-sm font-medium uppercase tracking-wide text-primary">Collection</p>
         <h1 className="text-2xl font-bold">{collection.title}</h1>

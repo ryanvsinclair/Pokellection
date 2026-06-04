@@ -34,7 +34,12 @@ export async function sendReservationEmails(
 
   const buyerEmail = reservation.buyer_email?.trim();
   if (buyerEmail) {
-    const buyer = buildReservationBuyerEmail({ reservation, cardTitle, cardSlug });
+    const buyer = buildReservationBuyerEmail({
+      reservation,
+      cardTitle,
+      cardSlug,
+      cardPriceCad,
+    });
     const buyerResult = await sendEmail({
       to: buyerEmail,
       subject: buyer.subject,

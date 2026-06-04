@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidatePublicCatalogSeo } from "@/lib/seo-revalidate";
 import { redirect } from "next/navigation";
 import { canIncreaseCartQuantity } from "@/lib/cart-inventory";
 import {
@@ -636,6 +637,7 @@ export async function placeOrder(formData: FormData) {
   revalidatePath("/admin/sales");
   revalidatePath("/admin/cards");
   revalidatePath("/admin/orders");
+  revalidatePublicCatalogSeo();
 
   try {
     await sendOrderPlacedEmails(supabase, order.id);

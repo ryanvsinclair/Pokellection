@@ -4,7 +4,9 @@ import { formatCad, getEtransferEmail } from "@/lib/utils";
 import type { BuyerOrderEmailSettings } from "@/lib/email/templates/order-placed-buyer";
 import {
   emailButton,
-  emailParagraph,
+  emailCallout,
+  emailOrderBadge,
+  emailTotals,
   escapeHtml,
   getSiteUrl,
   wrapEmailHtml,
@@ -21,18 +23,32 @@ export function buildPricingReviewResolvedEmail(
     pricing_review_resolved_at: order.pricing_review_resolved_at ?? new Date().toISOString(),
   });
 
+  const totalLines: { label: string; value: string; emphasize?: boolean }[] = [
+    { label: "Subtotal", value: formatCad(order.subtotal_cad) },
+  ];
+  if (Number(order.shipping_fee_cad) > 0) {
+    totalLines.push({
+      label: "Shipping",
+      value: formatCad(order.shipping_fee_cad),
+    });
+  }
+  totalLines.push({
+    label: "Total",
+    value: formatCad(order.total_cad),
+    emphasize: true,
+  });
+
   const bodyHtml = `
-    ${emailParagraph(`Hi ${escapeHtml(order.buyer_name)},`)}
-    ${emailParagraph("Your order price review is complete. Here is your updated total:")}
-    ${emailParagraph(`<strong>Subtotal:</strong> ${escapeHtml(formatCad(order.subtotal_cad))}`)}
-    ${Number(order.shipping_fee_cad) > 0 ? emailParagraph(`<strong>Shipping:</strong> ${escapeHtml(formatCad(order.shipping_fee_cad))}`) : ""}
-    ${emailParagraph(`<strong>Total:</strong> ${escapeHtml(formatCad(order.total_cad))}`)}
-    <div style="margin:16px 0;padding:12px;background:#fffbeb;border-radius:8px;">
-      <p style="margin:0;font-weight:600;">Ready to pay by e-transfer</p>
-      <p style="margin:8px 0 0;">Send <strong>${escapeHtml(formatCad(dueNow))}</strong> to <strong>${escapeHtml(etransferEmail)}</strong></p>
-      <p style="margin:8px 0 0;">Memo: <strong>${escapeHtml(order.order_number)}</strong></p>
-      ${settings?.etransfer_instructions ? `<p style="margin:8px 0 0;">${escapeHtml(settings.etransfer_instructions)}</p>` : ""}
-    </div>
+    ${emailOrderBadge(order.order_number)}
+    <p style="margin:12px 0 20px;font-size:14px;color:#64748b;">Your price review is complete. Here is your updated total:</p>
+    ${emailTotals(totalLines)}
+    ${emailCallout(
+      "payment",
+      "Ready to pay by e-transfer",
+      `<p style="margin:0 0 8px;">Send <strong>${escapeHtml(formatCad(dueNow))}</strong> to <strong>${escapeHtml(etransferEmail)}</strong></p>
+      <p style="margin:0;">Memo: <strong>${escapeHtml(order.order_number)}</strong></p>
+      ${settings?.etransfer_instructions ? `<p style="margin:12px 0 0;">${escapeHtml(settings.etransfer_instructions)}</p>` : ""}`,
+    )}
     ${emailButton(orderUrl, "View order & pay")}
   `;
 
@@ -50,7 +66,11 @@ export function buildPricingReviewResolvedEmail(
 
   return {
     subject: `Your order ${order.order_number} is ready to pay`,
-    html: wrapEmailHtml(`Order ${order.order_number} ready to pay`, bodyHtml),
+    html: wrapEmailHtml(`Order ${order.order_number} ready to pay`, bodyHtml, {
+      preheader: `Updated total ${formatCad(order.total_cad)} — ready for e-transfer.`,
+      headline: "Price review complete",
+      lead: `Hi ${escapeHtml(order.buyer_name)},`,
+    }),
     text,
   };
 }

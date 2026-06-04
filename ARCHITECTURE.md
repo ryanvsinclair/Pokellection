@@ -8,6 +8,21 @@ Format: newest decisions on top. Keep entries short — context, decision, why.
 
 ---
 
+## SEO, sitemap, and Google Merchant feed
+
+**Context:** Public discovery (Google Search + Shopping) for shop singles and collections.
+
+**Decision:** `src/lib/seo.ts` — metadata helpers, Product JSON-LD, breadcrumbs. Each available card
+at `/shop/[slug]` gets rich `generateMetadata` (canonical, Open Graph image from first photo) plus
+`Product` schema. `src/app/sitemap.ts` and `robots.ts` list indexable routes; admin/account/checkout
+disallowed. `GET /product-feed.xml` — Google Merchant RSS (available cards with photos only); link
+feed in Merchant Center after `NEXT_PUBLIC_SITE_URL` is production. Catalog queries cached via
+`unstable_cache` (`src/lib/queries/seo.ts`, 120s); `revalidatePublicCatalogSeo()` on inventory
+changes. Public shop/collection pages set `revalidate = 60` (ISR hint; root layout still reads
+auth cookies so pages may render dynamically until cart/session is split from layout).
+
+---
+
 ## Canada ship price review before e-transfer
 
 **Context:** Shop prices reflect TCGPlayer at publish time; shipped orders are paid by e-transfer after checkout.

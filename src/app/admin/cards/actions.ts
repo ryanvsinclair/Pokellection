@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidatePublicCatalogSeo } from "@/lib/seo-revalidate";
 import { redirect } from "next/navigation";
 import { assertManager } from "@/lib/admin-auth";
 import { roundPriceCad } from "@/lib/currency";
@@ -28,6 +29,7 @@ export async function setCardStatus(formData: FormData) {
 
   revalidatePath("/admin/cards");
   revalidatePath("/shop");
+  revalidatePublicCatalogSeo();
 }
 
 export async function deleteCard(formData: FormData) {
@@ -41,6 +43,7 @@ export async function deleteCard(formData: FormData) {
 
   revalidatePath("/admin/cards");
   revalidatePath("/shop");
+  revalidatePublicCatalogSeo();
 }
 
 export async function saveCardEdits(formData: FormData) {
@@ -80,6 +83,7 @@ export async function saveCardEdits(formData: FormData) {
 
   revalidatePath("/admin/cards");
   revalidatePath(`/shop`);
+  revalidatePublicCatalogSeo();
   redirect("/admin/cards");
 }
 
@@ -118,6 +122,7 @@ export async function appendCardPhotoPaths(
     revalidatePath("/shop");
     revalidatePath(`/shop/${card.slug}`);
     revalidatePath("/collections");
+    revalidatePublicCatalogSeo();
 
     return { ok: true, photoCount: photo_paths.length };
   } catch (err) {

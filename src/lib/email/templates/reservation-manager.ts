@@ -3,7 +3,9 @@ import type { Reservation } from "@/types/database";
 import { formatCad } from "@/lib/utils";
 import {
   emailButton,
-  emailParagraph,
+  emailCallout,
+  emailKeyValue,
+  emailMailto,
   escapeHtml,
   getSiteUrl,
   wrapEmailHtml,
@@ -22,17 +24,24 @@ export function buildReservationManagerEmail(input: {
     timeStyle: "short",
   });
 
+  const notesRow = reservation.notes?.trim()
+    ? [{ label: "Note", valueHtml: escapeHtml(reservation.notes.trim()) }]
+    : [];
+
   const bodyHtml = `
-    ${emailParagraph(`<strong>New pickup reservation</strong> for ${escapeHtml(cardTitle)} (${escapeHtml(formatCad(cardPriceCad))}).`)}
-    ${emailParagraph(`<strong>Buyer:</strong> ${escapeHtml(reservation.buyer_name)}<br>
-      <a href="mailto:${escapeHtml(reservation.buyer_email)}">${escapeHtml(reservation.buyer_email)}</a><br>
-      ${escapeHtml(reservation.buyer_phone)}`)}
-    ${emailParagraph(`<strong>Expires:</strong> ${escapeHtml(expires)}`)}
-    ${
-      reservation.notes?.trim()
-        ? emailParagraph(`<strong>Note:</strong> ${escapeHtml(reservation.notes.trim())}`)
-        : ""
-    }
+    ${emailCallout(
+      "info",
+      "New pickup reservation",
+      `<p style="margin:0;"><strong>${escapeHtml(cardTitle)}</strong> · ${escapeHtml(formatCad(cardPriceCad))}</p>`,
+    )}
+    ${emailKeyValue([
+      {
+        label: "Buyer",
+        valueHtml: `${escapeHtml(reservation.buyer_name)}<br>${emailMailto(reservation.buyer_email)}<br>${escapeHtml(reservation.buyer_phone)}`,
+      },
+      { label: "Expires", valueHtml: escapeHtml(expires) },
+      ...notesRow,
+    ])}
     ${emailButton(adminUrl, "View reservations")}
   `;
 
@@ -49,7 +58,11 @@ export function buildReservationManagerEmail(input: {
   return {
     to: getManagerNotificationEmail(settings),
     subject: `New reservation — ${cardTitle}`,
-    html: wrapEmailHtml("New reservation", bodyHtml),
+    html: wrapEmailHtml("New reservation", bodyHtml, {
+      preheader: `${reservation.buyer_name} reserved ${cardTitle}.`,
+      headline: "New reservation",
+      lead: "A buyer placed a same-day pickup hold.",
+    }),
     text,
   };
 }

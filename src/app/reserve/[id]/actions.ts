@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidatePublicCatalogSeo } from "@/lib/seo-revalidate";
 import { redirect } from "next/navigation";
 import { getUserProfileRole, isBuyer } from "@/lib/auth-roles";
 import { buyerSignupPath } from "@/lib/buyer-auth-paths";
@@ -32,7 +33,7 @@ export async function reserveCardForPickupAction(
 
   const { data: card } = await supabase
     .from("cards")
-    .select("id, status")
+    .select("id, slug, status")
     .eq("id", cardId)
     .eq("status", "available")
     .maybeSingle();
@@ -89,7 +90,8 @@ export async function reserveCardForPickupAction(
   }
 
   revalidatePath("/shop");
-  revalidatePath(`/shop/${cardId}`);
+  revalidatePath(`/shop/${card.slug}`);
   revalidatePath("/admin/reservations");
+  revalidatePublicCatalogSeo();
   redirect("/account/orders?reserved=1");
 }

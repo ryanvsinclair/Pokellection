@@ -5,7 +5,8 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { getCartItemCount } from "@/lib/queries/cart";
 import { createClient } from "@/lib/supabase/server";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/utils";
+import { absoluteUrl, getSiteUrl } from "@/lib/seo";
+import { LOCATION, SITE_DESCRIPTION, SITE_NAME } from "@/lib/utils";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,11 +15,34 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: {
-    default: SITE_NAME,
+    default: `${SITE_NAME} — Pokémon cards in ${LOCATION}`,
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  keywords: [
+    "Pokémon cards",
+    "Pokemon cards Ottawa",
+    "Pokémon singles",
+    "trading cards Canada",
+    "local pickup Ottawa",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "en_CA",
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: absoluteUrl("/"),
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

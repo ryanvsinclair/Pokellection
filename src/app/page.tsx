@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CardGrid } from "@/components/CardGrid";
+import { JsonLd } from "@/components/JsonLd";
 import { getCartQuantitiesByCardId } from "@/lib/queries/cart";
 import { getJustSoldCards, getLatestArrivals, LATEST_ARRIVAL_TIERS } from "@/lib/queries/cards";
 import { canPurchaseAsBuyer } from "@/lib/auth-roles";
+import { buildOrganizationJsonLd, buildPageMetadata, buildWebSiteJsonLd } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
+import { LOCATION, SITE_DESCRIPTION } from "@/lib/utils";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: `Pokémon cards in ${LOCATION}`,
+  description: SITE_DESCRIPTION,
+  path: "/",
+});
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -25,9 +35,10 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-10">
+      <JsonLd data={[buildOrganizationJsonLd(), buildWebSiteJsonLd()]} />
       <section className="rounded-2xl bg-gradient-to-br from-red-600 to-red-800 px-6 py-10 text-white shadow-lg">
         <p className="mb-2 text-sm font-medium uppercase tracking-wide text-red-100">
-          Ottawa, Ontario
+          {LOCATION}
         </p>
         <h1 className="max-w-2xl text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
           Independent Pokémon singles &amp; collections in Ottawa

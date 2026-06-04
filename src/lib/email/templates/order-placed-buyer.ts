@@ -10,7 +10,11 @@ import type { Order, OrderItem } from "@/types/database";
 import { formatCad, getEtransferEmail } from "@/lib/utils";
 import {
   emailButton,
-  emailParagraph,
+  emailCallout,
+  emailItemsTable,
+  emailKeyValue,
+  emailOrderBadge,
+  emailTotals,
   escapeHtml,
   getSiteUrl,
   wrapEmailHtml,
@@ -47,67 +51,72 @@ export function buildBuyerOrderConfirmationEmail(
   const balanceOnDelivery = getBalanceDueOnDelivery(order);
   const etransferEmail = getEtransferEmail(settings);
 
-  const lineRows = items
-    .map(
-      (item) =>
-        `<tr>
-          <td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeHtml(item.title_snapshot)} × ${item.quantity}</td>
-          <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${escapeHtml(formatCad(Number(item.price_snapshot) * item.quantity))}</td>
-        </tr>`,
-    )
-    .join("");
+  const tableRows = items.map((item) => ({
+    title: item.title_snapshot,
+    quantity: item.quantity,
+    lineTotal: formatCad(Number(item.price_snapshot) * item.quantity),
+  }));
+
+  const totalLines: { label: string; value: string; emphasize?: boolean }[] = [
+    { label: "Subtotal", value: formatCad(order.subtotal_cad) },
+  ];
+  if (Number(order.shipping_fee_cad) > 0) {
+    totalLines.push({
+      label: "Shipping / fees",
+      value: formatCad(order.shipping_fee_cad),
+    });
+  }
+  totalLines.push({
+    label: "Total",
+    value: formatCad(order.total_cad),
+    emphasize: true,
+  });
 
   let paymentHtml = "";
   if (pricingReviewOpen) {
-    paymentHtml = `
-      <div style="margin:16px 0;padding:12px;background:#f5f3ff;border-radius:8px;">
-        <p style="margin:0;font-weight:600;">Price review requested</p>
-        <p style="margin:8px 0 0;">We are reviewing your order against current market prices. We will email you when your total is ready — please wait before sending an e-transfer.</p>
-        ${
-          order.pricing_review_message
-            ? `<p style="margin:8px 0 0;"><strong>Your note:</strong> ${escapeHtml(order.pricing_review_message)}</p>`
-            : ""
-        }
-      </div>`;
+    paymentHtml = emailCallout(
+      "info",
+      "Price review in progress",
+      `<p style="margin:0 0 8px;">We are reviewing your order against current market prices. We will email you when your total is ready — please wait before sending an e-transfer.</p>
+      ${
+        order.pricing_review_message
+          ? `<p style="margin:0;"><strong>Your note:</strong> ${escapeHtml(order.pricing_review_message)}</p>`
+          : ""
+      }`,
+    );
   } else if (prepay && hasDeposit && dueNow > 0) {
-    paymentHtml = `
-      <div style="margin:16px 0;padding:12px;background:#fffbeb;border-radius:8px;">
-        <p style="margin:0;font-weight:600;">E-transfer deposit required</p>
-        <p style="margin:8px 0 0;">Send <strong>${escapeHtml(formatCad(dueNow))}</strong> to <strong>${escapeHtml(etransferEmail)}</strong></p>
-        <p style="margin:8px 0 0;">Memo: <strong>${escapeHtml(order.order_number)}</strong></p>
-        <p style="margin:8px 0 0;">Balance due on delivery: ${escapeHtml(formatCad(balanceOnDelivery))} (non-refundable deposit).</p>
-        ${settings?.etransfer_instructions ? `<p style="margin:8px 0 0;">${escapeHtml(settings.etransfer_instructions)}</p>` : ""}
-      </div>`;
+    paymentHtml = emailCallout(
+      "payment",
+      "E-transfer deposit required",
+      `<p style="margin:0 0 8px;">Send <strong>${escapeHtml(formatCad(dueNow))}</strong> to <strong>${escapeHtml(etransferEmail)}</strong></p>
+      <p style="margin:0 0 8px;">Memo: <strong>${escapeHtml(order.order_number)}</strong></p>
+      <p style="margin:0;">Balance due on delivery: <strong>${escapeHtml(formatCad(balanceOnDelivery))}</strong> (non-refundable deposit).</p>
+      ${settings?.etransfer_instructions ? `<p style="margin:12px 0 0;">${escapeHtml(settings.etransfer_instructions)}</p>` : ""}`,
+    );
   } else if (prepay && dueNow > 0) {
-    paymentHtml = `
-      <div style="margin:16px 0;padding:12px;background:#fffbeb;border-radius:8px;">
-        <p style="margin:0;font-weight:600;">E-transfer instructions</p>
-        <p style="margin:8px 0 0;">Send <strong>${escapeHtml(formatCad(dueNow))}</strong> to <strong>${escapeHtml(etransferEmail)}</strong></p>
-        <p style="margin:8px 0 0;">Memo: <strong>${escapeHtml(order.order_number)}</strong></p>
-        ${settings?.etransfer_instructions ? `<p style="margin:8px 0 0;">${escapeHtml(settings.etransfer_instructions)}</p>` : ""}
-      </div>`;
+    paymentHtml = emailCallout(
+      "payment",
+      "E-transfer instructions",
+      `<p style="margin:0 0 8px;">Send <strong>${escapeHtml(formatCad(dueNow))}</strong> to <strong>${escapeHtml(etransferEmail)}</strong></p>
+      <p style="margin:0;">Memo: <strong>${escapeHtml(order.order_number)}</strong></p>
+      ${settings?.etransfer_instructions ? `<p style="margin:12px 0 0;">${escapeHtml(settings.etransfer_instructions)}</p>` : ""}`,
+    );
   } else {
-    paymentHtml = emailParagraph(
-      `<strong>Payment:</strong> Pay on pickup (cash or e-transfer when we meet).`,
+    paymentHtml = emailCallout(
+      "success",
+      "Payment on pickup",
+      `<p style="margin:0;">Pay when we meet — cash or e-transfer at pickup.</p>`,
     );
   }
 
   const bodyHtml = `
-    ${emailParagraph(`Thanks for your order, ${escapeHtml(order.buyer_name)}!`)}
-    ${emailParagraph(`<strong>Order:</strong> ${escapeHtml(order.order_number)}<br><strong>Placed:</strong> ${escapeHtml(placedAt)}`)}
-    ${emailParagraph(`<strong>Fulfillment:</strong> ${escapeHtml(fulfillmentLabel)}`)}
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <thead>
-        <tr>
-          <th style="text-align:left;padding:8px 0;border-bottom:2px solid #ddd;">Item</th>
-          <th style="text-align:right;padding:8px 0;border-bottom:2px solid #ddd;">Price</th>
-        </tr>
-      </thead>
-      <tbody>${lineRows}</tbody>
-    </table>
-    ${emailParagraph(`Subtotal: ${escapeHtml(formatCad(order.subtotal_cad))}`)}
-    ${Number(order.shipping_fee_cad) > 0 ? emailParagraph(`Shipping / fees: ${escapeHtml(formatCad(order.shipping_fee_cad))}`) : ""}
-    ${emailParagraph(`<strong>Total: ${escapeHtml(formatCad(order.total_cad))}</strong>`)}
+    ${emailKeyValue([
+      { label: "Order", valueHtml: emailOrderBadge(order.order_number) },
+      { label: "Placed", valueHtml: escapeHtml(placedAt) },
+      { label: "Fulfillment", valueHtml: escapeHtml(fulfillmentLabel) },
+    ])}
+    ${emailItemsTable(tableRows)}
+    ${emailTotals(totalLines)}
     ${paymentHtml}
     ${emailButton(orderUrl, "View your order")}
   `;
@@ -140,7 +149,11 @@ export function buildBuyerOrderConfirmationEmail(
 
   return {
     subject: `Order confirmed — ${order.order_number}`,
-    html: wrapEmailHtml(`Order ${order.order_number}`, bodyHtml),
+    html: wrapEmailHtml(`Order ${order.order_number}`, bodyHtml, {
+      preheader: `Your order ${order.order_number} is confirmed.`,
+      headline: `Thanks, ${escapeHtml(order.buyer_name)}!`,
+      lead: "We received your order and will keep you updated by email.",
+    }),
     text: textLines.join("\n"),
   };
 }

@@ -2,7 +2,9 @@ import { formatFulfillmentOptionLabel } from "@/lib/checkout-options";
 import type { Order } from "@/types/database";
 import {
   emailButton,
-  emailParagraph,
+  emailCallout,
+  emailKeyValue,
+  emailOrderBadge,
   escapeHtml,
   getSiteUrl,
   wrapEmailHtml,
@@ -23,10 +25,15 @@ export function buildReadyForPickupEmail(
   );
 
   const bodyHtml = `
-    ${emailParagraph(`Hi ${escapeHtml(order.buyer_name)},`)}
-    ${emailParagraph(`Your order <strong>${escapeHtml(order.order_number)}</strong> is ready for pickup.`)}
-    ${emailParagraph(`<strong>Fulfillment:</strong> ${escapeHtml(fulfillmentLabel)}`)}
-    ${emailParagraph("Bring your order number when you arrive. Pay on pickup if you have not paid by e-transfer yet.")}
+    ${emailCallout(
+      "success",
+      "Ready for pickup",
+      `<p style="margin:0;">Bring your order number when you arrive. Pay on pickup if you have not paid by e-transfer yet.</p>`,
+    )}
+    ${emailKeyValue([
+      { label: "Order", valueHtml: emailOrderBadge(order.order_number) },
+      { label: "Fulfillment", valueHtml: escapeHtml(fulfillmentLabel) },
+    ])}
     ${emailButton(orderUrl, "View your order")}
   `;
 
@@ -39,7 +46,11 @@ export function buildReadyForPickupEmail(
 
   return {
     subject: `Ready for pickup — ${order.order_number}`,
-    html: wrapEmailHtml(`Order ${order.order_number} ready`, bodyHtml),
+    html: wrapEmailHtml(`Order ${order.order_number} ready`, bodyHtml, {
+      preheader: `Your order ${order.order_number} is ready for pickup.`,
+      headline: "Your order is ready",
+      lead: `Hi ${escapeHtml(order.buyer_name)},`,
+    }),
     text,
   };
 }

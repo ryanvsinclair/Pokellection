@@ -4,7 +4,10 @@ import type { Order, OrderItem } from "@/types/database";
 import { formatCad } from "@/lib/utils";
 import {
   emailButton,
-  emailParagraph,
+  emailCallout,
+  emailKeyValue,
+  emailMailto,
+  emailOrderBadge,
   escapeHtml,
   getSiteUrl,
   wrapEmailHtml,
@@ -30,24 +33,29 @@ export function buildManagerOrderAlertEmail(
     .join("; ");
 
   const reviewBlock = pricingReviewOpen
-    ? `<div style="margin:16px 0;padding:12px;background:#fef3c7;border-radius:8px;">
-        <p style="margin:0;font-weight:600;">Price review requested</p>
-        ${
-          order.pricing_review_message
-            ? `<p style="margin:8px 0 0;">${escapeHtml(order.pricing_review_message)}</p>`
-            : `<p style="margin:8px 0 0;">Buyer asked for a market price review before e-transfer.</p>`
-        }
-      </div>`
+    ? emailCallout(
+        "warning",
+        "Price review requested",
+        order.pricing_review_message
+          ? `<p style="margin:0;">${escapeHtml(order.pricing_review_message)}</p>`
+          : `<p style="margin:0;">Buyer asked for a market price review before e-transfer.</p>`,
+      )
     : "";
 
   const bodyHtml = `
-    ${emailParagraph(`<strong>New order:</strong> ${escapeHtml(order.order_number)}`)}
-    ${emailParagraph(`<strong>Buyer:</strong> ${escapeHtml(order.buyer_name)}<br>
-      <a href="mailto:${escapeHtml(order.buyer_email)}">${escapeHtml(order.buyer_email)}</a><br>
-      ${escapeHtml(order.buyer_phone)}`)}
-    ${emailParagraph(`<strong>Fulfillment:</strong> ${escapeHtml(fulfillmentLabel)}`)}
-    ${emailParagraph(`<strong>Total:</strong> ${escapeHtml(formatCad(order.total_cad))} (subtotal ${escapeHtml(formatCad(order.subtotal_cad))}, fees ${escapeHtml(formatCad(order.shipping_fee_cad))})`)}
-    ${emailParagraph(`<strong>Items:</strong> ${escapeHtml(itemSummary)}`)}
+    ${emailKeyValue([
+      { label: "Order", valueHtml: emailOrderBadge(order.order_number) },
+      {
+        label: "Buyer",
+        valueHtml: `${escapeHtml(order.buyer_name)}<br>${emailMailto(order.buyer_email)}<br>${escapeHtml(order.buyer_phone)}`,
+      },
+      { label: "Fulfillment", valueHtml: escapeHtml(fulfillmentLabel) },
+      {
+        label: "Total",
+        valueHtml: `<strong>${escapeHtml(formatCad(order.total_cad))}</strong> <span style="color:#64748b;">(subtotal ${escapeHtml(formatCad(order.subtotal_cad))}, fees ${escapeHtml(formatCad(order.shipping_fee_cad))})</span>`,
+      },
+      { label: "Items", valueHtml: escapeHtml(itemSummary) },
+    ])}
     ${reviewBlock}
     ${emailButton(adminUrl, "Open in admin")}
   `;
@@ -70,7 +78,11 @@ export function buildManagerOrderAlertEmail(
     subject: pricingReviewOpen
       ? `[Price review] New order ${order.order_number}`
       : `New order ${order.order_number}`,
-    html: wrapEmailHtml(`New order ${order.order_number}`, bodyHtml),
+    html: wrapEmailHtml(`New order ${order.order_number}`, bodyHtml, {
+      preheader: `New order ${order.order_number} from ${order.buyer_name}.`,
+      headline: "New order",
+      lead: `${escapeHtml(order.buyer_name)} placed an order.`,
+    }),
     text,
   };
 }

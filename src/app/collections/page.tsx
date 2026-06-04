@@ -1,13 +1,20 @@
+import type { Metadata } from "next";
 import { CollectionGrid } from "@/components/CollectionGrid";
 import {
   getAvailableCollections,
   getCollectionListingMeta,
 } from "@/lib/queries/collections";
+import { buildPageMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
+import { LOCATION } from "@/lib/utils";
 
-export const metadata = {
-  title: "Collections",
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: "Pokémon card collections",
+  description: `Curated Pokémon card bundles at set prices — ${LOCATION} pickup or ship across Canada.`,
+  path: "/collections",
+});
+
+export const revalidate = 60;
 
 export default async function CollectionsPage() {
   const supabase = await createClient();
